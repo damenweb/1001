@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>1 К 100 — Professional Edition</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --pastel-red: #8B2E2E; 
+            --pastel-blue: #2F4F6F;
+            --bg-dark: #1C1C1C;
+            --main-text: #ffffff;
+            --accent-wrong: #ff4444;
+            --board-bg: #101030;
+            --card-front-border: #202060;
+            --card-back-bg: #fceabb;
+            --card-text-color: #1C1C1C;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0; padding: 0;
+            background: var(--bg-dark); color: var(--main-text);
+            height: 100vh; overflow: hidden;
+            display: flex; flex-direction: row; 
+        }
+
+        .upload-container { position: absolute; bottom: 15px; left: 15px; z-index: 100; }
+        .btn-upload { 
+            background: rgba(255, 255, 255, 0.1); color: white; 
+            width: 45px; height: 45px; font-size: 1.2rem;
+            border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+
+        .side-panel {
+            width: 280px; min-width: 280px; height: 100vh;
+            display: flex; flex-direction: column;
+            align-items: center; padding: 20px;
+            transition: 0.3s ease;
+        }
+        .side-panel.left { background: linear-gradient(to right, var(--pastel-red), var(--bg-dark)); }
+        .side-panel.right { background: linear-gradient(to left, var(--pastel-blue), var(--bg-dark)); }
+        
+		
+		/* Подсветка для ЛЕВОЙ команды (Красная) */
+		.side-panel.left.active-team {
+			background: linear-gradient(to right, #ff4d4d, var(--bg-dark)); /* Сочный красный */
+		}
+
+		/* Подсветка для ПРАВОЙ команды (Синяя) */
+		.side-panel.right.active-team {
+			background: linear-gradient(to left, #4d94ff, var(--bg-dark)); /* Яркий синий */
+		}
+		
+		/*.side-panel.active-team { filter: brightness(1.3); box-shadow: inset 0 0 50px rgba(255,255,255,0.1); }*/
+
+		.team-name {
+			background: transparent; 
+			border: none;
+			color: var(--main-text); 
+			font-weight: 800; 
+			font-size: 1.4rem;
+			text-transform: uppercase; 
+			text-align: center;
+			width: 100%; 
+			height: 90px; 
+			resize: none; 
+			overflow: hidden; /* Скрывает скроллбар, если текста много */
+			font-family: inherit; 
+			margin-bottom: 15px;
+			outline: none; /* Убирает рамку при нажатии */
+			
+			/* Добавьте эти строки для центрирования контента */
+			display: flex;
+			align-items: center;      /* Центр по вертикали */
+			justify-content: center;   /* Центр по горизонтали */
+			line-height: 1.2;          /* Чтобы многострочный текст не слипался */
+			padding-top: 20px;         /* Небольшой костыль для textarea, если текст "прилипает" к верху */
+		}
+
+		.score-input {
+			background: rgba(0,0,0,0.3);
+			border: 2px solid rgba(255, 255, 255, 0.3);
+			color: var(--main-text); 
+			font-weight: 800; 
+			font-size: 5.5rem;
+			text-align: center; 
+			border-radius: 15px;
+			width: 100%; 
+			max-width: 190px; 
+			height: 130px;
+			outline: none;
+			overflow: hidden; /* КРИТИЧНО: убирает скроллбар внутри инпута */
+			-moz-appearance: textfield; /* Для Firefox */
+		}
+		
+		/* Дополнительно для Chrome/Safari, чтобы убрать стрелочки и лишние отступы */
+		.score-input::-webkit-outer-spin-button,
+		.score-input::-webkit-inner-spin-button {
+			-webkit-appearance: none;
+			margin: 0;
+		}
+
+        .players-box { width: 100%; flex-grow: 1; margin-top: 20px; display: flex; flex-direction: column; align-items: center; }
+        .player-list { width: 100%; list-style: none; padding: 0; margin: 10px 0; }
+		
+		.player-item {
+			display: flex; 
+			justify-content: center; /* Центрирует по горизонтали */
+			align-items: center;     /* Центрирует по вертикали */
+			padding: 8px 12px; 
+			margin-bottom: 5px; 
+			background: rgba(0,0,0,0.2);
+			border-radius: 5px; 
+			width: 100%; 
+			font-weight: 600;
+			border: 2px solid transparent; 
+			transition: 0.2s; 
+			font-size: 1.1rem;
+			position: relative; /* Чтобы кнопка удаления не мешала центровке текста */
+		}
+		
+		/* Чтобы имя было строго по центру, а крестик не "отъедал" место */
+		.player-item span:first-child {
+			flex-grow: 1;
+			text-align: center;
+			margin-left: 24px; /* Компенсируем ширину крестика для идеальной симметрии */
+		}
+
+        .player-item.current-turn { border-color: #fff; background: rgba(255,255,255,0.2); transform: scale(1.05); }
+
+		.remove-p-btn { 
+			color: var(--accent-wrong); 
+			cursor: pointer; 
+			font-weight: 800; 
+			opacity: 0.6;
+			width: 24px;
+			text-align: right;
+		}
+
+		.remove-p-btn:hover { opacity: 1; }
+        .add-p-btn { background: rgba(255,255,255,0.1); border: 1px dashed #fff; color: #fff; padding: 5px 15px; border-radius: 20px; cursor: pointer; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; transition: opacity 0.5s; }
+        .hidden { opacity: 0; pointer-events: none; }
+        
+		.top-nav {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			/* Фиксируем высоту, чтобы контент ниже не дергался */
+			height: 250px; 
+			min-height: 250px;
+			margin-bottom: 10px;
+			justify-content: flex-start; /* Элементы будут идти сверху вниз */
+			flex-shrink: 0; /* Запрещаем панели сжиматься, если экран маленький */
+		}
+
+        .nav-controls { display: flex; align-items: center; gap: 30px; margin-top: 10px; }
+        #file-status { font-size: 1.6rem; font-weight: 800; }
+
+        .btn-nav {
+            background: #fff; border: none; color: #000;
+            width: 45px; height: 45px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .btn-nav:disabled { opacity: 0.2; cursor: default; }
+
+        .question-container {
+            margin-top: 10px; min-height: 100px;
+            display: flex; align-items: center; justify-content: center; width: 100%;
+        }
+        #question-text { 
+            font-weight: 700; font-size: 1.8rem; text-align: center; 
+            text-transform: uppercase; line-height: 1.2; max-width: 90%;
+        }
+
+		.timer-zone {
+			font-size: 3.5rem;
+			font-weight: 800;
+			margin: 5px 0;
+			cursor: pointer;
+			text-align: center;
+			transition: opacity 0.3s;
+
+			/* ДОБАВЬТЕ ЭТИ СТРОКИ */
+			min-width: 300px;   /* Чтобы надпись "Ваш ответ?" не расширяла блок */
+			height: 80px;      /* Фиксированная высота */
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;    /* Запрещает блоку сжиматься */
+		}
+		
+		.timer-zone.invisible { opacity: 0; pointer-events: none; }
+        .timer-zone.warning { color: var(--accent-wrong); animation: blink 0.5s infinite; }
+        .timer-zone.time-up { font-size: 2rem; color: var(--accent-wrong); }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        .game-area {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			gap: 20px;
+			
+			/* ИЗМЕНИТЬ ЗДЕСЬ */
+			margin: auto 0;       /* Автоматические отступы сверху и снизу центрируют блок */
+			padding-bottom: 0;    /* Убираем лишний паддинг, чтобы центровка была честной */
+		}
+		
+		.strike-group { display: flex; flex-direction: column; gap: 15px; }
+        .strike {
+            width: 65px; height: 65px; background: rgba(255, 255, 255, 0.05);
+            border: 3px solid rgba(255, 255, 255, 0.1); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.8rem; font-weight: 900; color: rgba(255, 255, 255, 0.02);
+        }
+        .strike.active { background: #fff; color: var(--accent-wrong); box-shadow: 0 0 25px #fff; }
+
+        .board-container { width: 650px; display: flex; flex-direction: column; gap: 8px; }
+        .answer-card { height: 55px; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .answer-card.flipped { transform: rotateX(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; border-radius: 6px; font-weight: 700; text-transform: uppercase; }
+        .card-front { background: var(--board-bg); border: 2px solid var(--card-front-border); justify-content: center; color: var(--card-back-bg); font-size: 1.6rem; }
+        .card-back { background: var(--card-back-bg); color: var(--card-text-color); transform: rotateX(180deg); border: 2px solid #fff; justify-content: center; }
+        .ans-text { text-align: center; width: 100%; padding: 0 80px; font-size: 1.4rem; font-weight: 800; }
+        .ans-points { position: absolute; right: 0; height: 100%; width: 70px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.9rem; border-left: 3px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="upload-container">
+    <button class="btn-upload" onclick="document.getElementById('fileInput').click()">📂</button>
+    <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
+</div>
+
+<div class="side-panel left" id="panel-0">
+    <textarea class="team-name">КОМАНДА 1</textarea>
+    <input type="number" class="score-input" id="score-0" value="0">
+    <div class="players-box">
+        <ul class="player-list" id="list-0"></ul>
+        <button class="add-p-btn" onclick="addPlayer(0)">+ ИГРОК</button>
+    </div>
+</div>
+
+<div class="main-content hidden" id="main-content">
+    <div class="top-nav">
+        <div class="nav-controls">
+            <button class="btn-nav" id="prevBtn" onclick="changeQuestion(-1)" disabled>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div id="file-status">0 / 0</div>
+            <button class="btn-nav" id="nextBtn" onclick="changeQuestion(1)" disabled>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+        </div>
+        <div class="question-container">
+            <div id="question-text"></div>
+        </div>
+        <div class="timer-zone invisible" id="timer" onclick="toggleTimer()">15</div>
+    </div>
+
+    <div class="game-area">
+        <div class="strike-group" id="strikes-0">
+            <div class="strike">X</div><div class="strike">X</div><div class="strike">X</div>
+        </div>
+        <div class="board-container" id="game-board"></div>
+        <div class="strike-group" id="strikes-1">
+            <div class="strike">X</div><div class="strike">X</div><div class="strike">X</div>
+        </div>
+    </div>
+</div>
+
+<div class="side-panel right" id="panel-1">
+    <textarea class="team-name">КОМАНДА 2</textarea>
+    <input type="number" class="score-input" id="score-1" value="0">
+    <div class="players-box">
+        <ul class="player-list" id="list-1"></ul>
+        <button class="add-p-btn" onclick="addPlayer(1)">+ ИГРОК</button>
+    </div>
+</div>
+
+<script>
+    let gameData = [];
+    let currentIdx = 0;
+    const sounds = { flip: 'yes.mp3', strike: 'no.mp3', clap: 'clap.mp3', congrats: 'congrats.mp3', timer: 'timer.mp3' };
+
+    let players = [[], []];
+    let activeTeam = 0; 
+    let currentTurnIndices = [0, 0]; 
+    let roundSequence = []; 
+    let sequencePointer = 0; 
+    
+    let timerVal = 15;
+    let turnCounter = 0; 
+    let timerInterval = null;
+    let autoStartTimeout = null;
+
+    function playAudio(type) { new Audio(sounds[type]).play().catch(() => {}); }
+
+    function addPlayer(team) {
+        const name = prompt("Имя игрока:");
+        if (name) { 
+            players[team].push(name); 
+            generateRoundSequence();
+            updateUI(); 
+        }
+    }
+
+    function removePlayer(team, index) {
+        players[team].splice(index, 1);
+        generateRoundSequence();
+        if (roundSequence.length > 0) {
+            sequencePointer = sequencePointer % roundSequence.length;
+        } else {
+            sequencePointer = 0;
+        }
+        syncIndicesToSequence();
+        updateUI();
+    }
+
+    function generateRoundSequence() {
+        const maxPlayers = Math.max(players[0].length, players[1].length);
+        roundSequence = [];
+        if (maxPlayers === 0) return;
+        let startTeam = currentIdx % 2;
+        for (let i = 0; i < maxPlayers * 10; i++) { 
+            let pOffset = Math.floor(i / 2);
+            let team = (i % 2 === 0) ? startTeam : (1 - startTeam);
+            if (players[team].length > 0) {
+                let playerIdx = (pOffset + currentIdx) % players[team].length;
+                roundSequence.push({ team: team, pIdx: playerIdx });
+            }
+        }
+    }
+
+    function initQuestionTurn() {
+        sequencePointer = 0;
+        turnCounter = 0; 
+        generateRoundSequence();
+        if (roundSequence.length > 0) syncIndicesToSequence();
+
+        document.querySelectorAll('.strike').forEach(s => s.classList.remove('active'));
+        
+        resetTimerManually();
+        const timerEl = document.getElementById('timer');
+        timerEl.classList.add('invisible'); 
+        
+        clearTimeout(autoStartTimeout);
+        autoStartTimeout = setTimeout(() => {
+            timerEl.classList.remove('invisible');
+            startNewTurnTimer();
+        }, 3000);
+
+        updateUI();
+    }
+
+    function syncIndicesToSequence() {
+        if (roundSequence.length > 0 && roundSequence[sequencePointer]) {
+            const current = roundSequence[sequencePointer];
+            activeTeam = current.team;
+            currentTurnIndices[current.team] = current.pIdx;
+        } else { activeTeam = -1; }
+    }
+
+    function switchTurn() {
+        const strikes0 = document.querySelectorAll('#strikes-0 .active').length;
+        const strikes1 = document.querySelectorAll('#strikes-1 .active').length;
+
+        // Если у обеих команд по 3 ошибки - стоп и скрытие
+        if (strikes0 >= 3 && strikes1 >= 3) {
+            activeTeam = -1; 
+            clearInterval(timerInterval);
+            clearTimeout(autoStartTimeout);
+            document.getElementById('timer').classList.add('invisible');
+        } else {
+            let foundNext = false;
+            let attempts = 0;
+            while (!foundNext && attempts < roundSequence.length) {
+                sequencePointer = (sequencePointer + 1) % roundSequence.length;
+                let next = roundSequence[sequencePointer];
+                const teamStrikes = document.querySelectorAll(`#strikes-${next.team} .active`).length;
+                if (teamStrikes < 3) {
+                    foundNext = true;
+                    syncIndicesToSequence();
+                    turnCounter++; 
+                }
+                attempts++;
+            }
+            if (!foundNext) {
+                activeTeam = -1;
+                clearInterval(timerInterval);
+                document.getElementById('timer').classList.add('invisible');
+            } else {
+                startNewTurnTimer(); 
+            }
+        }
+        updateUI();
+    }
+
+    function openCard(index) {
+        const cards = document.querySelectorAll('.answer-card');
+        if (!cards[index] || cards[index].classList.contains('flipped')) return;
+        playAudio('flip');
+        cards[index].classList.add('flipped');
+        if (activeTeam !== -1) {
+            const p = parseInt(gameData[currentIdx].answers[index].points) || 0;
+            const scoreEl = document.getElementById(`score-${activeTeam}`);
+            scoreEl.value = parseInt(scoreEl.value) + p;
+            switchTurn();
+        }
+    }
+
+    function addStrike() {
+        if (activeTeam === -1) return;
+        const strikeGroup = document.getElementById(`strikes-${activeTeam}`);
+        const strikes = strikeGroup.querySelectorAll('.strike');
+        for (let s of strikes) {
+            if (!s.classList.contains('active')) {
+                s.classList.add('active');
+                playAudio('strike');
+                switchTurn();
+                break;
+            }
+        }
+    }
+
+    function toggleTimer() {
+        if (timerInterval) { 
+            clearInterval(timerInterval); 
+            timerInterval = null; 
+        } else {
+            startInterval();
+        }
+    }
+
+    function startNewTurnTimer() {
+        clearInterval(timerInterval);
+        timerVal = 15 + (turnCounter * 1); 
+        const timerEl = document.getElementById('timer');
+        timerEl.innerText = timerVal;
+        timerEl.classList.remove('warning', 'time-up');
+        // Если вдруг таймер был скрыт, показываем его при начале нового хода (если есть кому ходить)
+        timerEl.classList.remove('invisible');
+        startInterval();
+    }
+
+    function resetTimerManually() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerVal = 15;
+        const timerEl = document.getElementById('timer');
+        timerEl.innerText = "15";
+        timerEl.classList.remove('warning', 'time-up');
+    }
+
+    function startInterval() {
+        const timerEl = document.getElementById('timer');
+        timerInterval = setInterval(() => {
+            if (timerVal > 0) {
+                timerVal--;
+                timerEl.innerText = timerVal;
+                if (timerVal <= 3 && timerVal > 0) {
+                    //playAudio('timer');
+                    timerEl.classList.add('warning');
+                }
+            } else {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                playAudio('timer');
+                timerEl.classList.remove('warning');
+                timerEl.classList.add('time-up');
+                timerEl.innerText = "Ваш ответ?";
+            }
+        }, 1000);
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            const grouped = {};
+            json.forEach(row => {
+                if (row.Question) {
+                    if (!grouped[row.Question]) grouped[row.Question] = [];
+                    grouped[row.Question].push({ text: row.Answer || "", points: row.Points || 0 });
+                }
+            });
+            gameData = Object.keys(grouped).map(k => ({ question: k, answers: grouped[k] }));
+            currentIdx = 0; 
+            document.getElementById('main-content').classList.remove('hidden');
+            initQuestionTurn(); 
+            renderBoard();
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function renderBoard() {
+        const board = document.getElementById('game-board');
+        board.innerHTML = '';
+        const current = gameData[currentIdx];
+        document.getElementById('question-text').innerText = (current?.question || "").toUpperCase();
+        if (current) {
+            current.answers.forEach((ans, i) => {
+                const card = document.createElement('div');
+                card.className = 'answer-card';
+                card.innerHTML = `<div class="card-face card-front">${i+1}</div>
+                    <div class="card-face card-back"><span class="ans-text">${ans.text}</span><div class="ans-points">${ans.points}</div></div>`;
+                board.appendChild(card);
+            });
+        }
+    }
+
+    function changeQuestion(step) {
+        currentIdx += step;
+        initQuestionTurn();
+        renderBoard();
+        updateUI();
+    }
+
+    function updateUI() {
+        if (gameData.length > 0) {
+            document.getElementById('file-status').innerText = `${currentIdx + 1} / ${gameData.length}`;
+            document.getElementById('prevBtn').disabled = currentIdx === 0;
+            document.getElementById('nextBtn').disabled = currentIdx === gameData.length - 1;
+        }
+        [0, 1].forEach(t => {
+            const list = document.getElementById(`list-${t}`);
+            list.innerHTML = players[t].map((p, i) => 
+                `<li class="player-item ${activeTeam === t && currentTurnIndices[t] === i ? 'current-turn' : ''}">
+                    <span>${p}</span>
+                    <span class="remove-p-btn" onclick="removePlayer(${t}, ${i})">×</span>
+                </li>`
+            ).join('');
+            document.getElementById(`panel-${t}`).classList.toggle('active-team', activeTeam === t);
+        });
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key >= '1' && e.key <= '9') openCard(parseInt(e.key) - 1);
+        if (e.key === '0') openCard(9);
+        if (['~','`','ё','Ё'].includes(e.key)) addStrike();
+        if (e.key === '\\') playAudio('clap');
+        if (e.key === '=') playAudio('congrats');
+    });
+</script>
+</body>
+</html>
