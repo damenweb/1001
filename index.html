@@ -549,7 +549,12 @@
     window.addEventListener('keydown', (e) => {
         if (e.key >= '1' && e.key <= '9') openCard(parseInt(e.key) - 1);
         if (e.key === '0') openCard(9);
-        if (['~','`','ё','Ё'].includes(e.key)) addStrike();
+        if (
+		  e.code === 'Backquote' ||
+		  ['~','`','ё','Ё'].includes(e.key)
+		) {
+		  addStrike();
+		}
         if (e.key === '-') playAudio('clap');
         if (e.key === '=') playAudio('congrats');
     });
