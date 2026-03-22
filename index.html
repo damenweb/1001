@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>1 К 100</title>
+    <title>1 к 100</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
@@ -228,6 +228,14 @@
         .board-container { width: 650px; display: flex; flex-direction: column; gap: 8px; }
         .answer-card { height: 55px; position: relative; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
         .answer-card.flipped { transform: rotateX(180deg); }
+		
+		/* Оранжевый фон для отрицательных очков */
+		.answer-card.negative .card-back {
+			background: #ff9800; /* Яркий оранжевый */
+			color: #ffffff;
+			border-color: #ffb74d;
+		}
+		
         .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; border-radius: 6px; font-weight: 700; text-transform: uppercase; }
         .card-front { background: var(--board-bg); border: 2px solid var(--card-front-border); justify-content: center; color: var(--card-back-bg); font-size: 1.6rem; }
         .card-back { background: var(--card-back-bg); color: var(--card-text-color); transform: rotateX(180deg); border: 2px solid #fff; justify-content: center; }
@@ -291,7 +299,7 @@
 <script>
     let gameData = [];
     let currentIdx = 0;
-    const sounds = { flip: 'yes.mp3', strike: 'no.mp3', clap: 'clap.mp3', congrats: 'congrats.mp3', timer: 'timer.mp3' };
+    const sounds = { flip: 'yes.mp3', strike: 'no.mp3', clap: 'clap.mp3', congrats: 'congrats.mp3', fail: 'fail.mp3', timer: 'timer.mp3' };
 
     let players = [[], []];
     let activeTeam = 0; 
@@ -371,16 +379,21 @@
         } else { activeTeam = -1; }
     }
 
-    function switchTurn() {
+	function switchTurn() {
         const strikes0 = document.querySelectorAll('#strikes-0 .active').length;
         const strikes1 = document.querySelectorAll('#strikes-1 .active').length;
+        const timerEl = document.getElementById('timer');
 
-        // Если у обеих команд по 3 ошибки - стоп и скрытие
+        // Если у обеих команд по 3 ошибки - полная остановка и очистка
         if (strikes0 >= 3 && strikes1 >= 3) {
             activeTeam = -1; 
             clearInterval(timerInterval);
+            timerInterval = null;
             clearTimeout(autoStartTimeout);
-            document.getElementById('timer').classList.add('invisible');
+            
+            // КРИТИЧНО: убираем эффекты мигания перед скрытием
+            timerEl.classList.remove('warning', 'time-up');
+            timerEl.classList.add('invisible');
         } else {
             let foundNext = false;
             let attempts = 0;
@@ -398,7 +411,9 @@
             if (!foundNext) {
                 activeTeam = -1;
                 clearInterval(timerInterval);
-                document.getElementById('timer').classList.add('invisible');
+                timerInterval = null;
+                timerEl.classList.remove('warning', 'time-up');
+                timerEl.classList.add('invisible');
             } else {
                 startNewTurnTimer(); 
             }
@@ -406,15 +421,25 @@
         updateUI();
     }
 
-    function openCard(index) {
+	function openCard(index) {
         const cards = document.querySelectorAll('.answer-card');
+        const currentAnswers = gameData[currentIdx]?.answers;
+        
         if (!cards[index] || cards[index].classList.contains('flipped')) return;
-        playAudio('flip');
+
+        // ПРОВЕРКА ОЧКОВ: если меньше 0, играем 'fail', иначе стандартный 'flip'
+        const points = parseInt(currentAnswers[index].points) || 0;
+        if (points < 0) {
+            playAudio('fail');
+        } else {
+            playAudio('flip');
+        }
+
         cards[index].classList.add('flipped');
+
         if (activeTeam !== -1) {
-            const p = parseInt(gameData[currentIdx].answers[index].points) || 0;
             const scoreEl = document.getElementById(`score-${activeTeam}`);
-            scoreEl.value = parseInt(scoreEl.value) + p;
+            scoreEl.value = parseInt(scoreEl.value) + points;
             switchTurn();
         }
     }
@@ -505,7 +530,7 @@
         reader.readAsArrayBuffer(file);
     });
 
-    function renderBoard() {
+	function renderBoard() {
         const board = document.getElementById('game-board');
         board.innerHTML = '';
         const current = gameData[currentIdx];
@@ -513,9 +538,15 @@
         if (current) {
             current.answers.forEach((ans, i) => {
                 const card = document.createElement('div');
-                card.className = 'answer-card';
+                // Проверяем, являются ли очки отрицательными
+                const isNegative = parseInt(ans.points) < 0;
+                card.className = `answer-card ${isNegative ? 'negative' : ''}`;
+                
                 card.innerHTML = `<div class="card-face card-front">${i+1}</div>
-                    <div class="card-face card-back"><span class="ans-text">${ans.text}</span><div class="ans-points">${ans.points}</div></div>`;
+                    <div class="card-face card-back">
+                        <span class="ans-text">${ans.text}</span>
+                        <div class="ans-points">${ans.points}</div>
+                    </div>`;
                 board.appendChild(card);
             });
         }
