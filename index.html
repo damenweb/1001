@@ -301,6 +301,8 @@
     let currentIdx = 0;
     const sounds = { flip: 'yes.mp3', strike: 'no.mp3', clap: 'clap.mp3', congrats: 'congrats.mp3', fail: 'fail.mp3', timer: 'timer.mp3' };
 
+	let isTransitioning = false; // Флаг блокировки действий во время паузы
+
     let players = [[], []];
     let activeTeam = 0; 
     let currentTurnIndices = [0, 0]; 
@@ -403,6 +405,7 @@
 		clearInterval(timerInterval);
 		timerInterval = null;
 		timerEl.classList.add('invisible'); // Прячем его на время паузы
+		timerEl.innerText = "";
 
 		// Запускаем задержку перед выбором следующего игрока
 		setTimeout(() => {
@@ -424,13 +427,14 @@
 
 			if (!foundNext) {
 				activeTeam = -1;
-				timerEl.classList.add('invisible');
+				//timerEl.classList.add('invisible');
 			} else {
 				// Возвращаем видимость таймера и запускаем его для нового игрока
 				timerEl.classList.remove('invisible');
 				startNewTurnTimer(); 
 			}
 			
+			isTransitioning = false; // РАЗБЛОКИРОВКА: теперь можно снова нажимать
 			updateUI(); // Обновляем подсветку активного игрока только через секунду
 		}, 2000); // 1000 мс = 1 секунда
 	}
@@ -458,9 +462,9 @@
         const cards = document.querySelectorAll('.answer-card');
         const currentAnswers = gameData[currentIdx]?.answers;
         
-        if (!cards[index] || cards[index].classList.contains('flipped')) return;
+        // Добавляем проверку isTransitioning
+        if (isTransitioning || !cards[index] || cards[index].classList.contains('flipped')) return;
 
-        // ПРОВЕРКА ОЧКОВ: если меньше 0, играем 'fail', иначе стандартный 'flip'
         const points = parseInt(currentAnswers[index].points) || 0;
         if (points < 0) {
             playAudio('fail');
@@ -471,20 +475,25 @@
         cards[index].classList.add('flipped');
 
         if (activeTeam !== -1) {
+            isTransitioning = true; // БЛОКИРУЕМ управление
             const scoreEl = document.getElementById(`score-${activeTeam}`);
             scoreEl.value = parseInt(scoreEl.value) + points;
             switchTurn();
         }
     }
 
-    function addStrike() {
-        if (activeTeam === -1) return;
+	function addStrike() {
+        // Если сейчас идет пауза или нет активной команды — игнорируем нажатие
+        if (isTransitioning || activeTeam === -1) return; 
+
         const strikeGroup = document.getElementById(`strikes-${activeTeam}`);
         const strikes = strikeGroup.querySelectorAll('.strike');
         for (let s of strikes) {
             if (!s.classList.contains('active')) {
                 s.classList.add('active');
                 playAudio('strike');
+                
+                isTransitioning = true; // БЛОКИРУЕМ повторные нажатия
                 switchTurn();
                 break;
             }
