@@ -380,45 +380,78 @@
     }
 
 	function switchTurn() {
-        const strikes0 = document.querySelectorAll('#strikes-0 .active').length;
-        const strikes1 = document.querySelectorAll('#strikes-1 .active').length;
-        const timerEl = document.getElementById('timer');
+		const strikes0 = document.querySelectorAll('#strikes-0 .active').length;
+		const strikes1 = document.querySelectorAll('#strikes-1 .active').length;
+		const timerEl = document.getElementById('timer');
 
-        // Если у обеих команд по 3 ошибки - полная остановка и очистка
-        if (strikes0 >= 3 && strikes1 >= 3) {
-            activeTeam = -1; 
-            clearInterval(timerInterval);
-            timerInterval = null;
-            clearTimeout(autoStartTimeout);
-            
-            // КРИТИЧНО: убираем эффекты мигания перед скрытием
-            timerEl.classList.remove('warning', 'time-up');
-            timerEl.classList.add('invisible');
-        } else {
-            let foundNext = false;
-            let attempts = 0;
-            while (!foundNext && attempts < roundSequence.length) {
-                sequencePointer = (sequencePointer + 1) % roundSequence.length;
-                let next = roundSequence[sequencePointer];
-                const teamStrikes = document.querySelectorAll(`#strikes-${next.team} .active`).length;
-                if (teamStrikes < 3) {
-                    foundNext = true;
-                    syncIndicesToSequence();
-                    turnCounter++; 
-                }
-                attempts++;
+		// 1. ПРОВЕРКА КОНЦА ИГРЫ (Оставляем без задержки, чтобы финал срабатывал сразу)
+		if (strikes0 >= 3 && strikes1 >= 3) {
+			activeTeam = -1; 
+			clearInterval(timerInterval);
+			timerInterval = null;
+			clearTimeout(autoStartTimeout);
+			timerEl.classList.remove('warning', 'time-up');
+			timerEl.classList.add('invisible');
+			revealAllCards(); 
+			updateUI();
+			return;
+		}
+
+		// --- ВОТ ТУТ НАЧИНАЮТСЯ ИЗМЕНЕНИЯ ДЛЯ ПАУЗЫ ---
+
+		// Останавливаем текущий таймер немедленно, чтобы он не "тикал" лишнюю секунду
+		clearInterval(timerInterval);
+		timerInterval = null;
+		timerEl.classList.add('invisible'); // Прячем его на время паузы
+
+		// Запускаем задержку перед выбором следующего игрока
+		setTimeout(() => {
+			let foundNext = false;
+			let attempts = 0;
+			
+			while (!foundNext && attempts < roundSequence.length) {
+				sequencePointer = (sequencePointer + 1) % roundSequence.length;
+				let next = roundSequence[sequencePointer];
+				const teamStrikes = document.querySelectorAll(`#strikes-${next.team} .active`).length;
+				
+				if (teamStrikes < 3) {
+					foundNext = true;
+					syncIndicesToSequence();
+					turnCounter++; 
+				}
+				attempts++;
+			}
+
+			if (!foundNext) {
+				activeTeam = -1;
+				timerEl.classList.add('invisible');
+			} else {
+				// Возвращаем видимость таймера и запускаем его для нового игрока
+				timerEl.classList.remove('invisible');
+				startNewTurnTimer(); 
+			}
+			
+			updateUI(); // Обновляем подсветку активного игрока только через секунду
+		}, 2000); // 1000 мс = 1 секунда
+	}
+
+	function revealAllCards() {
+        const cards = document.querySelectorAll('.answer-card');
+        // Начинаем с 3 секунд, чтобы первая карта открылась не сразу
+        let delay = 3000; 
+
+        cards.forEach((card, index) => {
+            // Открываем только те, что еще закрыты
+            if (!card.classList.contains('flipped')) {
+                setTimeout(() => {
+                    // Всегда играем стандартный звук открытия для финала
+                    playAudio('flip');
+                    card.classList.add('flipped');
+                }, delay);
+                
+                delay += 3000; // Интервал 3 секунды между последующими картами
             }
-            if (!foundNext) {
-                activeTeam = -1;
-                clearInterval(timerInterval);
-                timerInterval = null;
-                timerEl.classList.remove('warning', 'time-up');
-                timerEl.classList.add('invisible');
-            } else {
-                startNewTurnTimer(); 
-            }
-        }
-        updateUI();
+        });
     }
 
 	function openCard(index) {
