@@ -89,21 +89,34 @@
 		}
 
 		.score-input {
-			background: rgba(0,0,0,0.3);
-			border: 2px solid rgba(255, 255, 255, 0.3);
+			/*background: rgba(0,0,0,0.3);*/
+			/*border: 2px solid rgba(255, 255, 255, 0.3);*/
 			color: var(--main-text); 
 			font-weight: 800; 
-			font-size: 5.5rem;
+			font-size: 4.4rem;/*5.5rem;*/
 			text-align: center; 
-			border-radius: 15px;
+			/*border-radius: 15px;*/
 			width: 100%; 
-			max-width: 190px; 
+			max-width: 300px;/*190px;*/
 			height: 130px;
 			outline: none;
+			box-shadow: none;
+			background: transparent;
+			border: none;
 			overflow: hidden; /* КРИТИЧНО: убирает скроллбар внутри инпута */
 			-moz-appearance: textfield; /* Для Firefox */
+			transform: scaleY(1.1);    /* Вытягивает число по вертикали */
+			display: block;            /* Нужно для корректной работы трансформации */
+			margin: 0 auto;            /* Центрирует после растяжения */
 		}
 		
+		/* На всякий случай убираем аутлайн при клике (фокусе) */
+		.score-input:focus {
+			outline: none;
+			border: none;
+			box-shadow: none;
+		}
+				
 		/* Дополнительно для Chrome/Safari, чтобы убрать стрелочки и лишние отступы */
 		.score-input::-webkit-outer-spin-button,
 		.score-input::-webkit-inner-spin-button {
