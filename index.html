@@ -30,12 +30,17 @@
         }
 
         .upload-container { position: absolute; bottom: 15px; left: 15px; z-index: 100; }
-        .btn-upload { 
+        .btn-upload, .btn-start-game { 
             background: rgba(255, 255, 255, 0.1); color: white; 
             width: 45px; height: 45px; font-size: 1.2rem;
             border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2);
             cursor: pointer; display: flex; align-items: center; justify-content: center;
         }
+
+		.btn-upload:hover, .btn-start-game:hover {
+			background: rgba(255, 255, 255, 0.2);
+			border-color: rgba(255, 255, 255, 0.4);
+		}
 
         .side-panel {
             width: 280px; min-width: 280px; height: 100vh;
@@ -241,13 +246,122 @@
         .card-back { background: var(--card-back-bg); color: var(--card-text-color); transform: rotateX(180deg); border: 2px solid #fff; justify-content: center; }
         .ans-text { text-align: center; width: 100%; padding: 0 80px; font-size: 1.4rem; font-weight: 800; }
         .ans-points { position: absolute; right: 0; height: 100%; width: 70px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.9rem; border-left: 3px solid rgba(0,0,0,0.1); background: rgba(0,0,0,0.05); }
-    </style>
+    
+		/* Кнопка справки */
+		.btn-help {
+			background: rgba(255, 255, 255, 0.1);
+			color: white;
+			width: 45px;
+			height: 45px;
+			font-size: 1.2rem;
+			border-radius: 8px;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all 0.3s;
+		}
+
+		.btn-help:hover {
+			background: rgba(255, 255, 255, 0.3);
+		}
+
+		/* Модальное окно (оверлей) */
+		.modal-overlay {
+			position: fixed;
+			top: 0; left: 0; width: 100%; height: 100%;
+			background: rgba(0, 0, 0, 0.85);
+			display: none; /* Скрыто по умолчанию */
+			align-items: center;
+			justify-content: center;
+			z-index: 1000;
+			backdrop-filter: blur(5px);
+		}
+
+		/* Контент окна */
+		.modal-content {
+			background: #2a2a2a;
+			padding: 30px 30px 0px 30px;
+			border-radius: 15px;
+			border: 2px solid #444;
+			max-width: 500px;
+			width: 90%;
+			position: relative;
+			box-shadow: 0 0 30px rgba(0,0,0,0.5);
+		}
+
+		.modal-close {
+			position: absolute;
+			top: 10px; right: 15px;
+			font-size: 1.5rem;
+			cursor: pointer;
+			color: #888;
+		}
+
+		.modal-close:hover { color: #fff; }
+
+		.help-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+		.help-table td { padding: 10px; border-bottom: 1px solid #3d3d3d; }
+		.help-key { 
+			background: #444; 
+			padding: 3px 8px; 
+			border-radius: 4px; 
+			font-family: monospace; 
+			color: #ffca28; 
+			font-weight: bold;
+		}
+		
+		.winner-highlight {
+			z-index: 100;
+			outline: 8px solid #ffd700 !important;
+			animation: winner-glow 1.5s infinite ease-in-out;
+			background: linear-gradient(to bottom, #ffd700, #b8860b) !important;
+		}
+		@keyframes winner-glow {
+			0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); transform: scale(1.02); }
+			50% { box-shadow: 0 0 60px rgba(255, 215, 0, 0.9); transform: scale(1.05); }
+		}
+	</style>
 </head>
 <body>
 
-<div class="upload-container">
+<div class="upload-container" style="display: flex; gap: 10px;">
     <button class="btn-upload" onclick="document.getElementById('fileInput').click()">📂</button>
     <input type="file" id="fileInput" accept=".xlsx, .xls" style="display: none;">
+
+    <button id="startGameBtn" class="btn-start-game" onclick="startGame()" style="display: none;">▶</button>
+    
+    <button class="btn-help" onclick="toggleHelp(event)">?</button>
+</div>
+
+<div id="helpModal" class="modal-overlay" onclick="closeHelp()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="modal-close" onclick="closeHelp()">&times;</span>
+        <h2 style="margin-top: 0; color: #fff; text-align: center;">Управление игрой</h2>
+        <table class="help-table">
+		    <tr align="center">
+                <td><span class="help-key">`</span> <span class="help-key">~</span> <span class="help-key">Ё</span></td>
+                <td>Засчитать промах</td>
+            </tr>
+            <tr align="center">
+                <td><span class="help-key">1</span> <span class="help-key">2</span> <span class="help-key">3</span> <span class="help-key">4</span> <span class="help-key">5</span>
+				<span class="help-key">6</span> <span class="help-key">7</span> <span class="help-key">8</span> <span class="help-key">9</span> <span class="help-key">0</span></td>
+                <td>Открыть карточку с соответствующим номером</td>
+            </tr>
+            <!--<tr align="center">
+                <td><span class="help-key">-</span></td>
+                <td>Звук аплодисментов</td>
+            </tr>
+            <tr align="center">
+                <td><span class="help-key">=</span></td>
+                <td>Звук победных фанфар</td>
+            </tr>-->
+        </table>
+        <p style="font-size: 0.85rem; color: #888; text-align: center; margin-top: 20px;">
+            Кликните в любом месте, чтобы закрыть
+        </p>
+    </div>
 </div>
 
 <div class="side-panel left" id="panel-0">
@@ -273,7 +387,7 @@
         <div class="question-container">
             <div id="question-text"></div>
         </div>
-        <div class="timer-zone invisible" id="timer" onclick="toggleTimer()">15</div>
+        <div class="timer-zone invisible" id="timer" onclick="toggleTimer()"></div>
     </div>
 
     <div class="game-area">
@@ -299,9 +413,14 @@
 <script>
     let gameData = [];
     let currentIdx = 0;
-    const sounds = { flip: 'yes.mp3', strike: 'no.mp3', clap: 'clap.mp3', congrats: 'congrats.mp3', fail: 'fail.mp3', timer: 'timer.mp3' };
-
-	let isTransitioning = false; // Флаг блокировки действий во время паузы
+    const sounds = { 
+        flip: 'yes.mp3', 
+        strike: 'no.mp3', 
+        clap: 'clap.mp3', 
+        congrats: 'congrats.mp3', 
+        fail: 'fail.mp3', 
+        timer: 'timer.mp3' 
+    };
 
     let players = [[], []];
     let activeTeam = 0; 
@@ -309,10 +428,15 @@
     let roundSequence = []; 
     let sequencePointer = 0; 
     
-    let timerVal = 15;
+	let revealTimeouts = []; // Массив для таймеров открытия карт
+	
+	const timerValMain = 12;
+    let timerVal = timerValMain;
     let turnCounter = 0; 
     let timerInterval = null;
     let autoStartTimeout = null;
+    let turnTimeout = null; // Ссылка на таймаут секундной паузы
+    let isTransitioning = true; // Флаг блокировки действий
 
     function playAudio(type) { new Audio(sounds[type]).play().catch(() => {}); }
 
@@ -341,20 +465,36 @@
         const maxPlayers = Math.max(players[0].length, players[1].length);
         roundSequence = [];
         if (maxPlayers === 0) return;
-        let startTeam = currentIdx % 2;
+
+        let startTeam = currentIdx % 2; 
+        let startingPlayerOffset = Math.floor(currentIdx / 2);
+
         for (let i = 0; i < maxPlayers * 10; i++) { 
             let pOffset = Math.floor(i / 2);
             let team = (i % 2 === 0) ? startTeam : (1 - startTeam);
             if (players[team].length > 0) {
-                let playerIdx = (pOffset + currentIdx) % players[team].length;
+                let playerIdx = (pOffset + startingPlayerOffset) % players[team].length;
                 roundSequence.push({ team: team, pIdx: playerIdx });
             }
         }
     }
 
     function initQuestionTurn() {
+		document.getElementById('panel-0').classList.remove('winner-highlight');
+		document.getElementById('panel-1').classList.remove('winner-highlight');
+		// 1. ОЧИСТКА ЗВУКОВ: убиваем таймеры открытия карт, чтобы звуки не лезли в новый вопрос
+        revealTimeouts.forEach(t => clearTimeout(t));
+        revealTimeouts = [];
+
+        // 2. Твоя стандартная очистка (как и была)
+        clearTimeout(turnTimeout); 
+        clearTimeout(autoStartTimeout);
+        clearInterval(timerInterval);
+        
+        isTransitioning = false; 
         sequencePointer = 0;
         turnCounter = 0; 
+        
         generateRoundSequence();
         if (roundSequence.length > 0) syncIndicesToSequence();
 
@@ -364,7 +504,6 @@
         const timerEl = document.getElementById('timer');
         timerEl.classList.add('invisible'); 
         
-        clearTimeout(autoStartTimeout);
         autoStartTimeout = setTimeout(() => {
             timerEl.classList.remove('invisible');
             startNewTurnTimer();
@@ -381,119 +520,123 @@
         } else { activeTeam = -1; }
     }
 
-	function switchTurn() {
-		const strikes0 = document.querySelectorAll('#strikes-0 .active').length;
-		const strikes1 = document.querySelectorAll('#strikes-1 .active').length;
-		const timerEl = document.getElementById('timer');
+    function switchTurn() {
+        const strikes0 = document.querySelectorAll('#strikes-0 .active').length;
+        const strikes1 = document.querySelectorAll('#strikes-1 .active').length;
+        const timerEl = document.getElementById('timer');
 
-		// 1. ПРОВЕРКА КОНЦА ИГРЫ (Оставляем без задержки, чтобы финал срабатывал сразу)
-		if (strikes0 >= 3 && strikes1 >= 3) {
-			activeTeam = -1; 
-			clearInterval(timerInterval);
-			timerInterval = null;
-			clearTimeout(autoStartTimeout);
-			timerEl.classList.remove('warning', 'time-up');
-			timerEl.classList.add('invisible');
-			revealAllCards(); 
-			updateUI();
-			return;
-		}
+        if (strikes0 >= 3 && strikes1 >= 3) {
+            activeTeam = -1; 
+            clearInterval(timerInterval);
+            clearTimeout(turnTimeout);
+            timerEl.classList.remove('warning', 'time-up');
+            timerEl.classList.add('invisible');
+            revealAllCards(); 
+            updateUI();
+            return;
+        }
 
-		// --- ВОТ ТУТ НАЧИНАЮТСЯ ИЗМЕНЕНИЯ ДЛЯ ПАУЗЫ ---
+        clearInterval(timerInterval);
+        timerEl.classList.add('invisible');
+        timerEl.innerText = ""; 
+        timerEl.classList.remove('warning', 'time-up');
 
-		// Останавливаем текущий таймер немедленно, чтобы он не "тикал" лишнюю секунду
-		clearInterval(timerInterval);
-		timerInterval = null;
-		timerEl.classList.add('invisible'); // Прячем его на время паузы
-		timerEl.innerText = "";
-
-		// Запускаем задержку перед выбором следующего игрока
-		setTimeout(() => {
-			let foundNext = false;
-			let attempts = 0;
-			
-			while (!foundNext && attempts < roundSequence.length) {
-				sequencePointer = (sequencePointer + 1) % roundSequence.length;
-				let next = roundSequence[sequencePointer];
-				const teamStrikes = document.querySelectorAll(`#strikes-${next.team} .active`).length;
-				
-				if (teamStrikes < 3) {
-					foundNext = true;
-					syncIndicesToSequence();
-					turnCounter++; 
-				}
-				attempts++;
-			}
-
-			if (!foundNext) {
-				activeTeam = -1;
-				//timerEl.classList.add('invisible');
-			} else {
-				// Возвращаем видимость таймера и запускаем его для нового игрока
-				timerEl.classList.remove('invisible');
-				startNewTurnTimer(); 
-			}
-			
-			isTransitioning = false; // РАЗБЛОКИРОВКА: теперь можно снова нажимать
-			updateUI(); // Обновляем подсветку активного игрока только через секунду
-		}, 2000); // 1000 мс = 1 секунда
-	}
-
-	function revealAllCards() {
-        const cards = document.querySelectorAll('.answer-card');
-        // Начинаем с 3 секунд, чтобы первая карта открылась не сразу
-        let delay = 3000; 
-
-        cards.forEach((card, index) => {
-            // Открываем только те, что еще закрыты
-            if (!card.classList.contains('flipped')) {
-                setTimeout(() => {
-                    // Всегда играем стандартный звук открытия для финала
-                    playAudio('flip');
-                    card.classList.add('flipped');
-                }, delay);
-                
-                delay += 3000; // Интервал 3 секунды между последующими картами
+        // Сохраняем таймаут, чтобы его можно было отменить при смене вопроса
+        turnTimeout = setTimeout(() => {
+            let foundNext = false;
+            let attempts = 0;
+            while (!foundNext && attempts < roundSequence.length) {
+                sequencePointer = (sequencePointer + 1) % roundSequence.length;
+                let next = roundSequence[sequencePointer];
+                const teamStrikes = document.querySelectorAll(`#strikes-${next.team} .active`).length;
+                if (teamStrikes < 3) {
+                    foundNext = true;
+                    syncIndicesToSequence();
+                    turnCounter++; 
+                }
+                attempts++;
             }
-        });
+
+            if (!foundNext) {
+                activeTeam = -1;
+            } else {
+                timerEl.classList.remove('invisible');
+                startNewTurnTimer(); 
+            }
+            
+            isTransitioning = false; 
+            updateUI(); 
+        }, 2000); 
     }
 
+	function revealAllCards() {
+		const cards = document.querySelectorAll('.answer-card');
+		let delay = 3000; 
+
+		cards.forEach((card) => {
+			if (!card.classList.contains('flipped')) {
+				// Сохраняем ID таймера в массив
+				const t = setTimeout(() => {
+					playAudio('flip'); 
+					card.classList.add('flipped');
+					const totalFlipped = document.querySelectorAll('.answer-card.flipped').length;
+					if (totalFlipped === cards.length && currentIdx === gameData.length - 1) {
+						setTimeout(() => runGrandFinale(), 3000);
+					}
+				}, delay);
+				revealTimeouts.push(t);
+				delay += 3000; 
+			}
+		});
+	}
+
 	function openCard(index) {
+        if (isTransitioning) return;
+        
         const cards = document.querySelectorAll('.answer-card');
         const currentAnswers = gameData[currentIdx]?.answers;
         
-        // Добавляем проверку isTransitioning
-        if (isTransitioning || !cards[index] || cards[index].classList.contains('flipped')) return;
+        if (!cards[index] || cards[index].classList.contains('flipped')) return;
 
         const points = parseInt(currentAnswers[index].points) || 0;
-        if (points < 0) {
-            playAudio('fail');
-        } else {
-            playAudio('flip');
-        }
-
+        playAudio(points < 0 ? 'fail' : 'flip');
         cards[index].classList.add('flipped');
 
+        // ПРОВЕРКА: Все ли разгадано?
+        const flippedCount = document.querySelectorAll('.answer-card.flipped').length;
+        if (flippedCount === cards.length) {
+            clearInterval(timerInterval);
+            clearTimeout(turnTimeout);
+            activeTeam = -1;
+            document.getElementById('timer').classList.add('invisible');
+            isTransitioning = false;
+            updateUI();
+			if (currentIdx === gameData.length - 1) {
+				setTimeout(() => runGrandFinale(), 3000);
+			} else {
+				setTimeout(() => playAudio('clap'), 3000);
+			}
+            return;
+        }
+
         if (activeTeam !== -1) {
-            isTransitioning = true; // БЛОКИРУЕМ управление
+            isTransitioning = true; 
             const scoreEl = document.getElementById(`score-${activeTeam}`);
             scoreEl.value = parseInt(scoreEl.value) + points;
             switchTurn();
         }
     }
 
-	function addStrike() {
-        // Если сейчас идет пауза или нет активной команды — игнорируем нажатие
-        if (isTransitioning || activeTeam === -1) return; 
-
+    function addStrike() {
+        if (isTransitioning || activeTeam === -1) return;
+        
         const strikeGroup = document.getElementById(`strikes-${activeTeam}`);
         const strikes = strikeGroup.querySelectorAll('.strike');
         for (let s of strikes) {
             if (!s.classList.contains('active')) {
                 s.classList.add('active');
                 playAudio('strike');
-                
-                isTransitioning = true; // БЛОКИРУЕМ повторные нажатия
+                isTransitioning = true; 
                 switchTurn();
                 break;
             }
@@ -511,11 +654,10 @@
 
     function startNewTurnTimer() {
         clearInterval(timerInterval);
-        timerVal = 15 + (turnCounter * 1); 
+        timerVal = timerValMain + (turnCounter * 1); 
         const timerEl = document.getElementById('timer');
         timerEl.innerText = timerVal;
         timerEl.classList.remove('warning', 'time-up');
-        // Если вдруг таймер был скрыт, показываем его при начале нового хода (если есть кому ходить)
         timerEl.classList.remove('invisible');
         startInterval();
     }
@@ -523,9 +665,9 @@
     function resetTimerManually() {
         clearInterval(timerInterval);
         timerInterval = null;
-        timerVal = 15;
+        timerVal = timerValMain;
         const timerEl = document.getElementById('timer');
-        timerEl.innerText = "15";
+        timerEl.innerText = `${timerValMain}`;
         timerEl.classList.remove('warning', 'time-up');
     }
 
@@ -536,7 +678,6 @@
                 timerVal--;
                 timerEl.innerText = timerVal;
                 if (timerVal <= 3 && timerVal > 0) {
-                    //playAudio('timer');
                     timerEl.classList.add('warning');
                 }
             } else {
@@ -550,8 +691,11 @@
         }, 1000);
     }
 
+	// 1. Обработчик выбора файла
     document.getElementById('fileInput').addEventListener('change', (e) => {
         const file = e.target.files[0];
+        if (!file) return;
+
         const reader = new FileReader();
         reader.onload = (e) => {
             const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
@@ -565,14 +709,42 @@
             });
             gameData = Object.keys(grouped).map(k => ({ question: k, answers: grouped[k] }));
             currentIdx = 0; 
-            document.getElementById('main-content').classList.remove('hidden');
-            initQuestionTurn(); 
-            renderBoard();
+
+            // Вместо старта просто показываем кнопку
+            const startBtn = document.getElementById('startGameBtn');
+            startBtn.style.display = 'block';
+            startBtn.innerText = `▶`;
         };
         reader.readAsArrayBuffer(file);
     });
 
-	function renderBoard() {
+    // 2. Функция запуска игры
+	function startGame() {
+        // 1. Проверка на наличие загруженного файла
+        if (gameData.length === 0) {
+            alert("Сначала выберите файл с вопросами!");
+            return;
+        }
+
+        // 2. Проверка на наличие игроков в обеих командах
+        if (players[0].length === 0 || players[1].length === 0) {
+            alert("Добавьте хотя бы по одному игроку в каждую команду!");
+            return;
+        }
+		
+		document.getElementById('score-0').value = 0;
+		document.getElementById('score-1').value = 0;
+
+        // Если проверки пройдены:
+        document.getElementById('startGameBtn').style.display = 'none';
+        document.getElementById('main-content').classList.remove('hidden');
+        
+        initQuestionTurn(); 
+        renderBoard();
+        updateUI();
+    }
+
+    function renderBoard() {
         const board = document.getElementById('game-board');
         board.innerHTML = '';
         const current = gameData[currentIdx];
@@ -580,7 +752,6 @@
         if (current) {
             current.answers.forEach((ans, i) => {
                 const card = document.createElement('div');
-                // Проверяем, являются ли очки отрицательными
                 const isNegative = parseInt(ans.points) < 0;
                 card.className = `answer-card ${isNegative ? 'negative' : ''}`;
                 
@@ -619,17 +790,39 @@
         });
     }
 
+	function toggleHelp(e) {
+        e.stopPropagation(); // Чтобы клик на кнопку не закрыл окно сразу
+        document.getElementById('helpModal').style.display = 'flex';
+    }
+
+    function closeHelp() {
+        document.getElementById('helpModal').style.display = 'none';
+    }
+	
+	function runGrandFinale() {
+		const s0 = parseInt(document.getElementById('score-0').value) || 0;
+		const s1 = parseInt(document.getElementById('score-1').value) || 0;
+		const p0 = document.getElementById('panel-0');
+		const p1 = document.getElementById('panel-1');
+
+		// Подсветка победителя
+		if (s0 >= s1) p0.classList.add('winner-highlight');
+		if (s1 >= s0) p1.classList.add('winner-highlight');
+
+		// Фанфары через 3 секунды
+		playAudio('congrats');
+	}
+
     window.addEventListener('keydown', (e) => {
+        if (isTransitioning) return; 
+        
         if (e.key >= '1' && e.key <= '9') openCard(parseInt(e.key) - 1);
         if (e.key === '0') openCard(9);
-        if (
-		  e.code === 'Backquote' ||
-		  ['~','`','ё','Ё'].includes(e.key)
-		) {
-		  addStrike();
-		}
-        if (e.key === '-') playAudio('clap');
-        if (e.key === '=') playAudio('congrats');
+        if (e.code === 'Backquote' || ['~','`','ё','Ё'].includes(e.key)) {
+            addStrike();
+        }
+        //if (e.key === '-') playAudio('clap');
+        //if (e.key === '=') playAudio('congrats');
     });
 </script>
 </body>
