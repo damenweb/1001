@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Полная Версия</title>
+    <title>Викторина - Fixed Turn Logic</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -13,7 +13,7 @@
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         #gameInterface { display: none; width: 100%; height: 100%; }
         #uploadScreen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 2000; }
-        
+
         .side-panel { width: 340px; display: flex; flex-direction: column; align-items: center; padding: 25px; transition: 0.5s; border: 2px solid transparent; }
         .left { background: linear-gradient(to bottom, var(--panel-left), #000); }
         .right { background: linear-gradient(to bottom, var(--panel-right), #000); }
@@ -23,16 +23,12 @@
         .turn-status { font-size: 0.85rem; height: 50px; text-align: center; display: flex; align-items: center; justify-content: center; width: 100%; }
         .badge-choosing { color: var(--gold); border: 2px solid var(--gold); padding: 5px 10px; font-weight: 900; border-radius: 5px; background: rgba(255, 204, 0, 0.1); }
         .badge-answering { color: #fff; border: 2px solid #fff; padding: 5px 10px; font-weight: 900; border-radius: 5px; }
-        
+
         .score-box { font-size: 5rem; font-weight: 900; margin: 5px 0; }
         .bank-info { font-size: 1.4rem; color: var(--gold); margin-bottom: 20px; font-weight: 800; border-bottom: 2px solid; visibility: hidden; }
-        
+
         .main-content { flex: 1; padding: 30px; display: flex; flex-direction: column; }
         .grid { display: grid; gap: 10px; grid-template-columns: 280px repeat(5, 1fr); margin-top: 20px; }
-        
-        .round-switcher { display: flex; gap: 10px; background: #161625; padding: 5px; border-radius: 15px; border: 1px solid #444; }
-        .round-btn { padding: 12px 25px; border: none; border-radius: 10px; background: transparent; color: #777; font-weight: 900; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
-        .round-btn.active { background: var(--gold); color: black; box-shadow: 0 0 15px rgba(255,204,0,0.3); }
 
         .category-btn { background: #161625; border: 2px solid #333; color: white; padding: 10px 15px; font-weight: 800; border-radius: 10px; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; height: 4.5rem; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
         .category-btn:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -41,16 +37,40 @@
         .q-cell.active-q { border-color: var(--gold); color: white; background: #1a1a2e; }
         .q-cell.correct { background: var(--correct); color: white; border-color: white; opacity: 1; }
         .q-cell.wrong-total { background: var(--wrong); color: white; opacity: 0.4; }
-        
+
+        .round-switcher { display: flex; gap: 10px; background: #161625; padding: 5px; border-radius: 15px; border: 1px solid #444; }
+        .round-btn { padding: 12px 25px; border: none; border-radius: 10px; background: transparent; color: #777; font-weight: 900; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
+        .round-btn.active { background: var(--gold); color: black; }
+
         #qModal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; z-index: 1000; }
-        #yt-container { width: 640px; height: 360px; display: none; border: 3px solid #333; border-radius: 15px; overflow: hidden; background: #000; margin-bottom: 20px; }
+        
+        #yt-wrapper {
+            width: 640px; height: 360px;
+            overflow: hidden; position: relative;
+            border-radius: 15px; background: #000;
+            display: none; border: 2px solid #333; margin-bottom: 20px;
+        }
+        #yt-player-box {
+            position: absolute; top: -15%; left: -15%;
+            width: 130%; height: 130%;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #audio-placeholder {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: #111; z-index: 5;
+        }
+        #yt-shield { position: absolute; inset: 0; z-index: 10; background: transparent; }
+
         #mediaBox img { max-height: 50vh; border-radius: 15px; border: 3px solid #333; margin-bottom: 20px; }
         #qText { font-size: 2.5rem; text-align: center; margin: 10px; font-weight: 700; max-width: 90%; }
         .ans-text { color: var(--gold); font-size: 3rem; margin-top: 20px; display: none; font-weight: 900; text-align: center; border: 4px solid var(--gold); padding: 20px; border-radius: 20px; }
-        
+
         .control-btn { padding: 20px 40px; font-size: 1.2rem; font-weight: 800; border-radius: 15px; cursor: pointer; border: none; margin: 10px; min-width: 200px; }
         .btn-bank { background: var(--gold); color: black; width: 100%; display: none; }
-        .btn-audio-fix { background: #444; color: white; min-width: auto; padding: 10px 25px; margin-bottom: 20px; font-size: 1rem; border: 2px solid #666; }
+        .btn-repeat { background: #444; color: white; padding: 10px 25px; font-size: 1rem; margin-bottom: 20px; display: none; min-width: auto; }
     </style>
 </head>
 <body>
@@ -70,7 +90,7 @@
     </div>
 
     <div class="main-content">
-        <div style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: center; margin-bottom: 10px;">
             <div class="round-switcher">
                 <button id="rb1" class="round-btn active" onclick="switchRound(1)">РАУНД 1</button>
                 <button id="rb2" class="round-btn" onclick="switchRound(2)">РАУНД 2</button>
@@ -89,8 +109,15 @@
 </div>
 
 <div id="qModal">
-    <button id="audioBtn" class="control-btn btn-audio-fix" style="display:none;" onclick="toggleMedia()">▶ PLAY / STOP</button>
-    <div id="yt-container"><div id="yt-player"></div></div>
+    <button id="repeatBtn" class="control-btn btn-repeat" onclick="replayMedia()">🔄 ПОВТОРИТЬ</button>
+    <div id="yt-wrapper">
+        <div id="yt-shield"></div>
+        <div id="audio-placeholder">
+            <span style="font-size: 80px;">🔊</span>
+            <p style="color: var(--gold); margin-top: 10px; font-weight: 900;">АУДИО-ВОПРОС</p>
+        </div>
+        <div id="yt-player-box"><div id="yt-player"></div></div>
+    </div>
     <div id="mediaBox"></div>
     <div id="qText"></div>
     <div id="ansText" class="ans-text"></div>
@@ -103,7 +130,7 @@
 
 <script>
     let gameData = [], currentRound = 1, activeTeam = 0, currentBank = 0, activeQ = null;
-    let lockedCategory = null, player = null, playerReady = false;
+    let lockedCategory = null, player = null, playerReady = false, monitorInterval = null;
     let teamLocks = [[], []];
 
     const tag = document.createElement('script');
@@ -113,9 +140,21 @@
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', { 
             height: '100%', width: '100%',
-            playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1 },
+            playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'iv_load_policy': 3 },
             events: { 'onReady': () => { playerReady = true; } }
         });
+    }
+
+    function startEndMonitor(endSec) {
+        clearInterval(monitorInterval);
+        monitorInterval = setInterval(() => {
+            if (player && player.getCurrentTime) {
+                if (player.getCurrentTime() >= endSec - 0.3) {
+                    document.getElementById('yt-player-box').style.opacity = '0';
+                    clearInterval(monitorInterval);
+                }
+            }
+        }, 100);
     }
 
     document.getElementById('fileInput').addEventListener('change', e => {
@@ -133,21 +172,23 @@
     });
 
     function renderGrid() {
-        const grid = document.getElementById('gameGrid');
-        grid.innerHTML = '';
+        const grid = document.getElementById('gameGrid'); grid.innerHTML = '';
         const roundData = gameData.filter(d => d.Round == currentRound);
         const categories = [...new Set(roundData.map(d => d.Category))];
 
         categories.forEach(cat => {
             const catQs = roundData.filter(d => d.Category === cat).slice(0, 5);
             const isFinished = catQs.every(q => q.status === 'correct' || q.status === 'fail');
+            
+            // Если категория в "замке" у текущей команды — кнопка выкл.
             const isLocked = teamLocks[activeTeam].includes(cat);
+            // Если в Раунде 1 или 2 сейчас идет цепочка вопросов в одной теме
             const isOtherCat = (lockedCategory !== null && lockedCategory !== cat);
             
             const btn = document.createElement('button');
             btn.className = 'category-btn';
             btn.disabled = isFinished || isLocked || isOtherCat;
-            btn.innerHTML = `<span>${cat}${isLocked ? ' 🔒' : ''}</span>`;
+            btn.innerHTML = `${cat}${isLocked ? ' 🔒' : ''}`;
             btn.onclick = () => startQuestion(cat);
             grid.appendChild(btn);
 
@@ -163,52 +204,63 @@
     }
 
     function playMedia(type, url, start, duration) {
-        const ytBox = document.getElementById('yt-container');
+        const wrapper = document.getElementById('yt-wrapper');
         const mBox = document.getElementById('mediaBox');
-        const aBtn = document.getElementById('audioBtn');
-        
-        mBox.innerHTML = ''; ytBox.style.display = 'none'; aBtn.style.display = 'none';
-        if (player && player.stopVideo) player.stopVideo();
+        const pBox = document.getElementById('yt-player-box');
+        const placeholder = document.getElementById('audio-placeholder');
+        const repeatBtn = document.getElementById('repeatBtn');
+        const isAns = document.getElementById('ansText').style.display === 'block';
+
+        mBox.innerHTML = ''; wrapper.style.display = 'none';
+        repeatBtn.style.display = 'none'; placeholder.style.display = 'none';
+        pBox.style.opacity = '0'; clearInterval(monitorInterval);
 
         if (!url || url === "" || url === "undefined") return;
 
         if (type === 'image') {
             mBox.innerHTML = `<img src="${url}">`;
         } else if ((type === 'video' || type === 'audio') && playerReady) {
+            wrapper.style.display = 'block';
+            if (!isAns) repeatBtn.style.display = 'block';
+            if (type === 'audio' && !isAns) placeholder.style.display = 'flex';
+
             const vId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('be/')[1];
-            if (type === 'video') ytBox.style.display = 'block';
-            if (type === 'audio') aBtn.style.display = 'block';
-            player.loadVideoById({ videoId: vId, startSeconds: parseInt(start) || 0, endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30) });
+            const sSec = parseInt(start) || 0;
+            const eSec = sSec + (parseInt(duration) || 30);
+
+            player.loadVideoById({ videoId: vId, startSeconds: sSec, endSeconds: eSec });
+            startEndMonitor(eSec);
+            if (type === 'video') setTimeout(() => { pBox.style.opacity = '1'; }, 500);
         }
     }
 
-    function toggleMedia() {
-        if (!player) return;
-        const state = player.getPlayerState();
-        state === 1 ? player.pauseVideo() : player.playVideo();
+    function replayMedia() {
+        if (activeQ) playMedia(activeQ.QType, activeQ.QMediaURL, activeQ.QStartTime, activeQ.QDuration);
     }
 
     function startQuestion(catName) {
         const opponent = activeTeam === 0 ? 1 : 0;
+        // Команда, выбравшая категорию, снимает замок у соперника
         teamLocks[opponent] = teamLocks[opponent].filter(c => c !== catName);
+        
         const q = gameData.find(d => d.Round == currentRound && d.Category === catName && d.status === 'open');
         if (!q) return;
+        
         activeQ = q; lockedCategory = catName;
-
-        const catQs = gameData.filter(d => d.Category === catName && d.Round == currentRound);
-        const qIdx = catQs.indexOf(q) + 1;
-
-        // Восстановление подписей
-        document.getElementById('hint-correct').innerText = `(+${currentRound === 2 ? qIdx*2 : qIdx} в банк)`;
-        document.getElementById('hint-wrong').innerText = currentRound === 1 ? `(0 штраф, переход)` : `(-${qIdx} счет, переход)`;
-
         document.getElementById('ansText').style.display = 'none';
         document.getElementById('modalControls').style.display = 'flex';
         document.getElementById('closeQBtn').style.display = 'none';
+
+        const qIdx = gameData.filter(d => d.Category === catName && d.Round == currentRound).indexOf(q) + 1;
+        document.getElementById('hint-correct').innerText = `(+${currentRound === 2 ? qIdx*2 : qIdx} в банк)`;
+        document.getElementById('hint-wrong').innerText = currentRound === 1 ? `(0 штраф, переход)` : `(-${qIdx} счет, переход)`;
+
         document.getElementById('qText').innerText = q.Question || "";
         document.getElementById('ansText').innerText = "ОТВЕТ: " + (q.Answer || "");
+        
         document.getElementById('qModal').style.display = 'flex';
         playMedia(q.QType, q.QMediaURL, q.QStartTime, q.QDuration);
+        renderGrid();
     }
 
     function handleResult(isCorrect) {
@@ -219,10 +271,14 @@
             activeQ.status = 'correct';
             currentBank += (currentRound === 2 ? qIdxInCat * 2 : qIdxInCat);
             teamLocks[activeTeam] = teamLocks[activeTeam].filter(c => c !== activeQ.Category);
+            
             if (categoryQs.every(q => q.status !== 'open')) {
                 const s = document.getElementById(`score-${activeTeam}`);
                 s.innerText = parseInt(s.innerText) + currentBank;
-                currentBank = 0; lockedCategory = null; smartSwitch();
+                currentBank = 0; lockedCategory = null;
+                renderGrid(); smartSwitch();
+            } else {
+                renderGrid();
             }
             showAnswerState();
         } else {
@@ -231,17 +287,26 @@
                 s.innerText = parseInt(s.innerText) - qIdxInCat;
             }
             activeQ.tries += 1;
+            
             if (activeQ.tries >= 2) {
                 activeQ.status = 'fail';
                 teamLocks[0] = teamLocks[0].filter(c => c !== activeQ.Category);
                 teamLocks[1] = teamLocks[1].filter(c => c !== activeQ.Category);
-                currentBank = 0; lockedCategory = null; smartSwitch(); showAnswerState();
+                currentBank = 0; lockedCategory = null; 
+                renderGrid(); smartSwitch(); showAnswerState();
             } else {
-                if (!teamLocks[activeTeam].includes(activeQ.Category)) teamLocks[activeTeam].push(activeQ.Category);
-                currentBank = 0; lockedCategory = null; smartSwitch(); closeModal();
+                // ПЕРВАЯ ОШИБКА — БЛОКИРУЕМ ТОЛЬКО ДЛЯ ТЕКУЩЕЙ КОМАНДЫ
+                if (!teamLocks[activeTeam].includes(activeQ.Category)) {
+                    teamLocks[activeTeam].push(activeQ.Category);
+                }
+                currentBank = 0; 
+                lockedCategory = null; // ВАЖНО: сбрасываем鎖, чтобы соперник мог выбрать эту тему
+                renderGrid(); 
+                smartSwitch(); 
+                closeModal();
             }
         }
-        updateUI(); renderGrid();
+        updateUI();
     }
 
     function showAnswerState() {
@@ -252,19 +317,24 @@
     }
 
     function closeModal() {
-        if (player && player.stopVideo) player.stopVideo();
+        if (player) player.stopVideo();
+        clearInterval(monitorInterval);
         document.getElementById('qModal').style.display = 'none';
     }
 
     function saveToBank() {
         const s = document.getElementById(`score-${activeTeam}`);
         s.innerText = parseInt(s.innerText) + currentBank;
-        currentBank = 0; lockedCategory = null; smartSwitch(); renderGrid();
+        currentBank = 0; lockedCategory = null; 
+        smartSwitch(); renderGrid();
     }
 
     function smartSwitch() {
         const opponent = activeTeam === 0 ? 1 : 0;
-        if (canTeamPlay(opponent)) activeTeam = opponent;
+        // Проверяем, может ли соперник играть (есть ли у него доступные темы без замка)
+        if (canTeamPlay(opponent)) {
+            activeTeam = opponent;
+        } 
         updateUI();
     }
 
@@ -274,29 +344,34 @@
         return categories.some(cat => {
             const catQs = roundData.filter(d => d.Category === cat);
             const isFinished = catQs.every(q => q.status === 'correct' || q.status === 'fail');
-            return !isFinished && !teamLocks[teamIdx].includes(cat);
+            const isLockedForThisTeam = teamLocks[teamIdx].includes(cat);
+            return !isFinished && !isLockedForThisTeam;
         });
     }
 
     function updateUI() {
         document.getElementById('panel-0').classList.toggle('active-team', activeTeam === 0);
         document.getElementById('panel-1').classList.toggle('active-team', activeTeam === 1);
+        
         const other = activeTeam === 0 ? 1 : 0;
         document.getElementById(`status-${activeTeam}`).innerHTML = '<span class="badge-answering">ВАШ ХОД</span>';
         document.getElementById(`status-${other}`).innerHTML = (currentRound === 2 && !lockedCategory) ? '<span class="badge-choosing">ВЫБИРАЕТ ДЛЯ СОПЕРНИКА</span>' : '';
+        
         const showBank = currentBank > 0;
         document.getElementById(`bank-${activeTeam}`).style.visibility = showBank ? 'visible' : 'hidden';
         document.getElementById(`bankBtn-${activeTeam}`).style.display = showBank ? 'block' : 'none';
         document.getElementById(`bank-${other}`).style.visibility = 'hidden';
         document.getElementById(`bankBtn-${other}`).style.display = 'none';
+
         document.getElementById('bank-0').innerText = `В БАНКЕ: ${currentBank}`;
         document.getElementById('bank-1').innerText = `В БАНКЕ: ${currentBank}`;
+
         document.getElementById('rb1').classList.toggle('active', currentRound === 1);
         document.getElementById('rb2').classList.toggle('active', currentRound === 2);
     }
 
     function switchRound(r) {
-        if(!confirm("Смена раунда!")) return;
+        if(!confirm("Сменить раунд?")) return;
         if (r === 2) {
             const s0 = parseInt(document.getElementById('score-0').innerText);
             const s1 = parseInt(document.getElementById('score-1').innerText);
