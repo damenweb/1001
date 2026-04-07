@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Fixed Logic</title>
+    <title>Викторина - Final Logic Fixed</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -30,7 +30,17 @@
         .main-content { flex: 1; padding: 30px; display: flex; flex-direction: column; }
         .grid { display: grid; gap: 10px; grid-template-columns: 280px repeat(5, 1fr); margin-top: 20px; }
 
-        .category-btn { background: #161625; border: 2px solid #333; color: white; padding: 10px 15px; font-weight: 800; border-radius: 10px; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; height: 4.5rem; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
+        /* ИСПРАВЛЕННЫЙ БЛОК КАТЕГОРИИ */
+        .category-btn { 
+            background: #161625; border: 2px solid #333; color: white; padding: 10px 15px; 
+            font-weight: 800; border-radius: 10px; cursor: pointer; text-transform: uppercase; 
+            font-size: 0.9rem; height: 4.5rem; display: flex; align-items: center; justify-content: center; 
+            text-align: center; line-height: 1.2; position: relative; overflow: hidden;
+        }
+        .category-btn span { z-index: 2; position: relative; }
+        .lock-icon { 
+            position: absolute; right: 8px; top: 8px; font-size: 0.8rem; opacity: 0.8; 
+        }
         .category-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         
         .q-cell { background: rgba(255,255,255,0.05); border: 2px solid #222; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: rgba(255,255,255,0.1); transition: 0.3s; }
@@ -48,7 +58,7 @@
             width: 640px; height: 360px;
             overflow: hidden; position: relative;
             border-radius: 15px; background: #000;
-            display: none; border: none; margin-bottom: 20px; /* Убрана обводка */
+            display: none; border: none; margin-bottom: 20px;
         }
         #yt-player-box {
             position: absolute; top: -15%; left: -15%;
@@ -64,8 +74,9 @@
         }
         #yt-shield { position: absolute; inset: 0; z-index: 10; background: transparent; }
 
-        #mediaBox img { max-height: 50vh; border-radius: 15px; border: none; margin-bottom: 20px; } /* Убрана обводка */
-        .ans-text { color: var(--gold); font-size: 3rem; margin-top: 20px; display: none; font-weight: 900; text-align: center; border: none; padding: 20px; border-radius: 20px; } /* Убрана обводка */
+        #mediaBox img { max-height: 50vh; border-radius: 15px; border: none; margin-bottom: 20px; }
+        #qText { font-size: 2.5rem; text-align: center; margin: 10px; font-weight: 700; max-width: 90%; display: block; }
+        .ans-text { color: var(--gold); font-size: 3rem; margin-top: 20px; display: none; font-weight: 900; text-align: center; border: none; padding: 20px; border-radius: 20px; }
 
         .control-btn { padding: 20px 40px; font-size: 1.2rem; font-weight: 800; border-radius: 15px; cursor: pointer; border: none; margin: 10px; min-width: 200px; }
         .btn-bank { background: var(--gold); color: black; width: 100%; display: none; }
@@ -118,6 +129,7 @@
         <div id="yt-player-box"><div id="yt-player"></div></div>
     </div>
     <div id="mediaBox"></div>
+    <div id="qText"></div>
     <div id="ansText" class="ans-text"></div>
     <div id="modalControls" style="display: flex; justify-content: center;">
         <button class="control-btn" style="background:var(--correct); color:white" onclick="handleResult(true)">ВЕРНО <span id="hint-correct" style="font-size: 0.7rem; display:block"></span></button>
@@ -183,7 +195,8 @@
             const btn = document.createElement('button');
             btn.className = 'category-btn';
             btn.disabled = isFinished || isLocked || isOtherCat;
-            btn.innerHTML = `${cat}${isLocked ? ' 🔒' : ''}`;
+            // Текст темы теперь в span для центровки, а замок отдельно
+            btn.innerHTML = `<span>${cat}</span>${isLocked ? '<div class="lock-icon">🔒</div>' : ''}`;
             btn.onclick = () => startQuestion(cat);
             grid.appendChild(btn);
 
@@ -241,6 +254,8 @@
         if (!q) return;
         
         activeQ = q; lockedCategory = catName;
+        document.getElementById('qText').style.display = 'block';
+        document.getElementById('qText').innerText = q.Question || "";
         document.getElementById('ansText').style.display = 'none';
         document.getElementById('modalControls').style.display = 'flex';
         document.getElementById('closeQBtn').style.display = 'none';
@@ -258,24 +273,23 @@
     function handleResult(isCorrect) {
         const categoryQs = gameData.filter(d => d.Category === activeQ.Category && d.Round == currentRound);
         const qIdxInCat = categoryQs.indexOf(activeQ) + 1;
+        const actingTeam = activeTeam; // Фиксируем, кто сейчас отвечал
 
         if (isCorrect) {
             activeQ.status = 'correct';
             currentBank += (currentRound === 2 ? qIdxInCat * 2 : qIdxInCat);
-            teamLocks[activeTeam] = teamLocks[activeTeam].filter(c => c !== activeQ.Category);
+            teamLocks[actingTeam] = teamLocks[actingTeam].filter(c => c !== activeQ.Category);
             
             if (categoryQs.every(q => q.status !== 'open')) {
-                const s = document.getElementById(`score-${activeTeam}`);
+                const s = document.getElementById(`score-${actingTeam}`);
                 s.innerText = parseInt(s.innerText) + currentBank;
                 currentBank = 0; lockedCategory = null;
-                renderGrid(); smartSwitch();
-            } else {
-                renderGrid();
+                smartSwitch();
             }
             showAnswerState();
         } else {
             if (currentRound === 2) {
-                const s = document.getElementById(`score-${activeTeam}`);
+                const s = document.getElementById(`score-${actingTeam}`);
                 s.innerText = parseInt(s.innerText) - qIdxInCat;
             }
             activeQ.tries += 1;
@@ -285,24 +299,25 @@
                 teamLocks[0] = teamLocks[0].filter(c => c !== activeQ.Category);
                 teamLocks[1] = teamLocks[1].filter(c => c !== activeQ.Category);
                 currentBank = 0; lockedCategory = null; 
-                renderGrid(); smartSwitch(); showAnswerState();
+                smartSwitch(); 
+                showAnswerState();
             } else {
-                // ПЕРВАЯ ОШИБКА — БЛОКИРУЕМ ТЕМУ ДЛЯ ТЕКУЩЕЙ КОМАНДЫ (замок вешаем ИМ)
-                if (!teamLocks[activeTeam].includes(activeQ.Category)) {
-                    teamLocks[activeTeam].push(activeQ.Category);
+                // ПЕРВАЯ ОШИБКА — Замок вешается ИМЕННО той команде, которая только что отвечала
+                if (!teamLocks[actingTeam].includes(activeQ.Category)) {
+                    teamLocks[actingTeam].push(activeQ.Category);
                 }
-                
                 currentBank = 0; 
                 lockedCategory = null; 
-                renderGrid(); 
                 smartSwitch(); 
                 closeModal();
             }
         }
         updateUI();
+        renderGrid();
     }
 
     function showAnswerState() {
+        document.getElementById('qText').style.display = 'none';
         document.getElementById('modalControls').style.display = 'none';
         document.getElementById('ansText').style.display = 'block';
         document.getElementById('closeQBtn').style.display = 'block';
@@ -319,7 +334,7 @@
         const s = document.getElementById(`score-${activeTeam}`);
         s.innerText = parseInt(s.innerText) + currentBank;
         currentBank = 0; lockedCategory = null; 
-        smartSwitch(); renderGrid();
+        smartSwitch(); renderGrid(); updateUI();
     }
 
     function smartSwitch() {
@@ -327,7 +342,6 @@
         if (canTeamPlay(opponent)) {
             activeTeam = opponent;
         } 
-        updateUI();
     }
 
     function canTeamPlay(teamIdx) {
