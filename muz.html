@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Fixed Replay</title>
+    <title>Викторина - No Spoilers Final</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -14,7 +14,7 @@
         #gameInterface { display: none; width: 100%; height: 100%; }
         #uploadScreen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 2000; }
         
-        .side-panel { width: 340px; display: flex; flex-direction: column; align-items: center; padding: 25px; }
+        .side-panel { width: 340px; display: flex; flex-direction: column; align-items: center; padding: 25px; transition: 0.5s; }
         .active-team { box-shadow: inset 0 0 80px rgba(255,255,255,0.25); border: 2px solid white; }
         .score-box { font-size: 5rem; font-weight: 900; margin: 5px 0; }
         .main-content { flex: 1; padding: 30px; display: flex; flex-direction: column; }
@@ -41,7 +41,8 @@
             top: -15%; left: -15%;
             width: 130%; height: 130%;
             pointer-events: none;
-            transition: opacity 0.2s;
+            opacity: 0; /* Изначально скрыт для предотвращения мерцания */
+            transition: opacity 0.4s ease-in-out;
         }
         #audio-placeholder {
             position: absolute; inset: 0;
@@ -87,7 +88,7 @@
         <div id="yt-shield"></div>
         <div id="audio-placeholder">
             <span style="font-size: 80px;">🔊</span>
-            <p style="color: #gold; margin-top: 10px; font-weight: 900;">АУДИО-ВОПРОС</p>
+            <p style="color: var(--gold); margin-top: 10px; font-weight: 900;">АУДИО-ВОПРОС</p>
         </div>
         <div id="yt-player-box"><div id="yt-player"></div></div>
     </div>
@@ -117,7 +118,7 @@
             events: { 
                 'onReady': () => { playerReady = true; },
                 'onStateChange': (e) => {
-                    // В конце видео просто делаем плеер прозрачным, чтобы не было спойлеров
+                    // Прячем плеер в конце, чтобы не было обложки
                     if (e.data === YT.PlayerState.ENDED) {
                         document.getElementById('yt-player-box').style.opacity = '0';
                     }
@@ -164,12 +165,13 @@
         const pBox = document.getElementById('yt-player-box');
         const placeholder = document.getElementById('audio-placeholder');
         const repeatBtn = document.getElementById('repeatBtn');
-        
+        const isAnswerMode = document.getElementById('ansText').style.display === 'block';
+
         mBox.innerHTML = '';
         wrapper.style.display = 'none';
         repeatBtn.style.display = 'none';
         placeholder.style.display = 'none';
-        pBox.style.opacity = '1'; // Возвращаем видимость плееру
+        pBox.style.opacity = '0'; // Скрываем перед загрузкой
 
         if (!url || url === "undefined" || url === "") return;
 
@@ -177,13 +179,14 @@
             mBox.innerHTML = `<img src="${url}">`;
         } else if ((type === 'video' || type === 'audio') && playerReady) {
             wrapper.style.display = 'block';
-            repeatBtn.style.display = 'block';
+            
+            // Кнопка повтора только для вопросов, не для ответов
+            if (!isAnswerMode) {
+                repeatBtn.style.display = 'block';
+            }
             
             if (type === 'audio') {
-                pBox.style.opacity = '0'; // Звук есть, картинки нет
                 placeholder.style.display = 'flex';
-            } else {
-                pBox.style.opacity = '1'; // Видео режим
             }
 
             const vId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('be/')[1];
@@ -193,23 +196,18 @@
                 endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
             });
             player.playVideo();
+
+            // Если это видео, проявляем его через 400мс, чтобы не было мерцания обложки
+            if (type === 'video') {
+                setTimeout(() => { pBox.style.opacity = '1'; }, 450);
+            }
         }
     }
 
     function replayMedia() {
         if (!activeQ) return;
-        // Проверяем, какой сейчас режим: вопрос или ответ
-        const isAns = document.getElementById('ansText').style.display === 'block';
-        const type = isAns ? activeQ.AType : activeQ.QType;
-        const url = isAns ? activeQ.AMediaURL : activeQ.QMediaURL;
-        const start = isAns ? activeQ.AStartTime : activeQ.QStartTime;
-        const dur = isAns ? activeQ.ADuration : activeQ.QDuration;
-        
-        // Принудительно сбрасываем состояние прозрачности перед повтором
-        document.getElementById('yt-player-box').style.opacity = (type === 'audio') ? '0' : '1';
-        if (type === 'audio') document.getElementById('audio-placeholder').style.display = 'flex';
-        
-        playMedia(type, url, start, dur);
+        // Кнопка повтора вызывается только из режима вопроса (логика скрытия выше)
+        playMedia(activeQ.QType, activeQ.QMediaURL, activeQ.QStartTime, activeQ.QDuration);
     }
 
     function startQuestion(catName) {
@@ -241,13 +239,13 @@
         document.getElementById('modalControls').style.display = 'none';
         document.getElementById('ansText').style.display = 'block';
         document.getElementById('closeQBtn').style.display = 'block';
+        // При переходе к ответу кнопка REPEAT скроется автоматически внутри playMedia
         playMedia(activeQ.AType, activeQ.AMediaURL, activeQ.AStartTime, activeQ.ADuration);
     }
 
     function closeModal() {
         if (player) player.stopVideo();
         document.getElementById('qModal').style.display = 'none';
-        document.getElementById('yt-wrapper').style.display = 'none';
     }
 
     function saveToBank() {
