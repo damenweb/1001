@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Интеллектуальная Битва: Мастер Тем</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #0a0a12;
+            --panel-left: #7b1d1d;
+            --panel-right: #1d3e5e;
+            --gold: #ffcc00;
+            --correct: #2ecc71;
+            --wrong: #e74c3c;
+            --cell-bg: rgba(255,255,255,0.05);
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--bg); color: white;
+            margin: 0; display: flex; height: 100vh; overflow: hidden;
+        }
+
+        /* Боковые панели команд */
+        .side-panel {
+            width: 320px; display: flex; flex-direction: column;
+            align-items: center; padding: 30px; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent; position: relative;
+        }
+        .left { background: linear-gradient(to bottom, var(--panel-left), #000); }
+        .right { background: linear-gradient(to bottom, var(--panel-right), #000); }
+        
+        .active-team { 
+            box-shadow: inset 0 0 80px rgba(255,255,255,0.25); 
+            border-color: white; transform: scale(1.02); z-index: 10;
+        }
+
+        .score-box { font-size: 5rem; font-weight: 900; margin: 10px 0; text-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .bank-info { font-size: 1.4rem; color: var(--gold); margin-bottom: 30px; font-weight: 800; text-transform: uppercase; }
+
+        /* Игровое поле */
+        .main-content { flex: 1; padding: 40px; display: flex; flex-direction: column; overflow-y: auto; }
+        .grid {
+            display: grid; gap: 15px;
+            grid-template-columns: 300px repeat(5, 1fr);
+            margin-top: 30px;
+        }
+
+        .category-btn {
+            background: #161625; border: 2px solid #333;
+            color: white; padding: 20px; font-weight: 800;
+            border-radius: 12px; cursor: pointer; text-align: left;
+            text-transform: uppercase; transition: all 0.2s;
+        }
+        .category-btn:hover:not(:disabled) { background: #252545; border-color: var(--gold); transform: translateX(8px); }
+        .category-btn:disabled { opacity: 0.2; cursor: not-allowed; filter: grayscale(1); }
+        
+        .q-cell {
+            background: var(--cell-bg); border: 2px solid #222;
+            border-radius: 12px; display: flex; align-items: center;
+            justify-content: center; font-size: 2.2rem; font-weight: 900;
+            color: rgba(255,255,255,0.1); transition: 0.3s;
+        }
+        .q-cell.active-q { border-color: var(--gold); color: white; background: #1a1a2e; box-shadow: 0 0 15px rgba(255,204,0,0.2); }
+        .q-cell.correct { background: var(--correct); color: white; border-color: white; opacity: 1; }
+        .q-cell.wrong-total { background: var(--wrong); color: white; border-color: #000; opacity: 0.4; }
+
+        /* Модальное окно вопроса */
+        #qModal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.98);
+            display: none; flex-direction: column; align-items: center;
+            justify-content: center; padding: 50px; z-index: 1000;
+        }
+        #mediaBox img { max-height: 55vh; border-radius: 20px; border: 4px solid #333; margin-bottom: 20px; }
+        #qText { font-size: 3.5rem; text-align: center; margin: 20px; font-weight: 700; line-height: 1.1; }
+        .ans-text { color: var(--gold); font-size: 2.5rem; margin-top: 20px; display: none; font-weight: 800; text-transform: uppercase; }
+
+        .control-btn {
+            padding: 20px 50px; font-size: 1.4rem; font-weight: 800;
+            border-radius: 15px; cursor: pointer; border: none; margin: 10px;
+            transition: 0.1s;
+        }
+        .btn-bank { background: var(--gold); color: black; width: 100%; box-shadow: 0 6px 0 #b8860b; }
+        .btn-bank:disabled { opacity: 0.1; box-shadow: none; transform: translateY(4px); }
+        .lock-tag { font-size: 0.75rem; color: #ff4d4d; display: block; margin-top: 4px; font-weight: 400; }
+    </style>
+</head>
+<body onclick="unlockBrowserAudio()">
+
+<div id="yt-player-container" style="position: absolute; top: -9999px;"><div id="yt-player"></div></div>
+
+<div class="side-panel left active-team" id="panel-0">
+    <h2 contenteditable="true">КОМАНДА 1</h2>
+    <div class="score-box" id="score-0">0</div>
+    <div class="bank-info" id="bank-0">БАНК: 0</div>
+    <button class="control-btn btn-bank" id="bankBtn-0" onclick="saveToBank()" disabled>ЗАБРАТЬ БАЛЛЫ</button>
+</div>
+
+<div class="main-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; border: 1px solid #222;">
+        <input type="file" id="fileInput" accept=".xlsx, .xls">
+        <h1 id="roundTitle" style="margin:0; letter-spacing: 5px; font-weight: 900;">РАУНД 1</h1>
+        <div>
+            <button onclick="switchRound(1)" style="cursor:pointer">Р1</button>
+            <button onclick="switchRound(2)" style="cursor:pointer">Р2</button>
+        </div>
+    </div>
+    <div class="grid" id="gameGrid"></div>
+</div>
+
+<div class="side-panel right" id="panel-1">
+    <h2 contenteditable="true">КОМАНДА 2</h2>
+    <div class="score-box" id="score-1">0</div>
+    <div class="bank-info" id="bank-1">БАНК: 0</div>
+    <button class="control-btn btn-bank" id="bankBtn-1" onclick="saveToBank()" disabled>ЗАБРАТЬ БАЛЛЫ</button>
+</div>
+
+<div id="qModal">
+    <div id="mediaBox"></div>
+    <div id="qText"></div>
+    <div id="ansText" class="ans-text"></div>
+    <div style="margin-top: 30px;">
+        <button class="control-btn" style="background:#444; color:white" onclick="document.getElementById('ansText').style.display='block'">ОТВЕТ</button>
+        <button class="control-btn" style="background:var(--correct); color:white" onclick="handleResult(true)">ВЕРНО</button>
+        <button class="control-btn" style="background:var(--wrong); color:white" onclick="handleResult(false)">ОШИБКА</button>
+    </div>
+</div>
+
+<script>
+    let gameData = [], currentRound = 1, activeTeam = 0, currentBank = 0, activeQ = null;
+    let lockedCategory = null, teamLocks = [null, null], player = null, apiReady = false;
+
+    // Инициализация YouTube API
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('yt-player', {
+            height: '200', width: '200',
+            playerVars: { 'autoplay': 1, 'controls': 0, 'enablejsapi': 1 },
+            events: { 'onReady': () => { apiReady = true; console.log("YT Ready"); } }
+        });
+    }
+
+    function unlockBrowserAudio() {
+        if (apiReady && player && player.playVideo) {
+            player.playVideo();
+            player.pauseVideo();
+            console.log("Audio Unlocked");
+        }
+    }
+
+    function extractVideoId(url) {
+        if (!url) return null;
+        const regExp = /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[7].length == 11) ? match[7] : null;
+    }
+
+    document.getElementById('fileInput').addEventListener('change', e => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            gameData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]).map(q => ({
+                ...q, status: 'open', tries: 0 
+            }));
+            renderGrid();
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function renderGrid() {
+        const grid = document.getElementById('gameGrid');
+        grid.innerHTML = '';
+        const roundData = gameData.filter(d => d.Round == currentRound);
+        const categories = [...new Set(roundData.map(d => d.Category))];
+
+        categories.forEach(cat => {
+            const catQs = roundData.filter(d => d.Category === cat).slice(0, 5);
+            const isFinished = catQs.every(q => q.status === 'correct' || q.status === 'fail');
+            const isTeamLockedOut = (teamLocks[activeTeam] === cat);
+            const mustContinueSame = (lockedCategory && lockedCategory !== cat);
+            
+            const btn = document.createElement('button');
+            btn.className = 'category-btn';
+            btn.disabled = isFinished || isTeamLockedOut || mustContinueSame;
+            btn.innerHTML = cat + (isTeamLockedOut ? '<span class="lock-tag">🔒 ОШИБКА</span>' : '');
+            btn.onclick = () => startQuestionInCat(cat);
+            grid.appendChild(btn);
+
+            catQs.forEach((q, i) => {
+                const cell = document.createElement('div');
+                cell.className = 'q-cell';
+                if (q.status === 'correct') cell.classList.add('correct');
+                else if (q.status === 'fail') cell.classList.add('wrong-total');
+                
+                const firstOpen = catQs.find(qq => qq.status === 'open');
+                if (!isFinished && firstOpen === q && !btn.disabled) cell.classList.add('active-q');
+                
+                cell.innerText = i + 1;
+                grid.appendChild(cell);
+            });
+        });
+    }
+
+    function startQuestionInCat(catName) {
+        const q = gameData.find(d => d.Round == currentRound && d.Category === catName && d.status === 'open');
+        if (!q) return;
+        activeQ = q; lockedCategory = catName;
+        
+        document.getElementById('qText').innerText = q.Question;
+        document.getElementById('ansText').innerText = "ОТВЕТ: " + q.Answer;
+        document.getElementById('ansText').style.display = 'none';
+        
+        const media = document.getElementById('mediaBox');
+        media.innerHTML = '';
+        
+        if (q.Type === 'image') media.innerHTML = `<img src="${q.MediaURL}">`;
+        
+        if (q.Type === 'audio' && player) {
+            const vId = extractVideoId(q.MediaURL);
+            if (vId) {
+                player.loadVideoById({
+                    videoId: vId,
+                    startSeconds: parseInt(q.StartTime) || 0,
+                    endSeconds: (parseInt(q.StartTime) || 0) + (parseInt(q.Duration) || 15)
+                });
+                // Запуск с задержкой для обхода блокировок
+                setTimeout(() => {
+                    player.unMute();
+                    player.setVolume(100);
+                    player.playVideo();
+                }, 600);
+            }
+        }
+        document.getElementById('qModal').style.display = 'flex';
+    }
+
+    function handleResult(isCorrect) {
+        if (player && player.stopVideo) player.stopVideo();
+        document.getElementById('qModal').style.display = 'none';
+
+        if (isCorrect) {
+            activeQ.status = 'correct';
+            // Сумма баллов = индекс вопроса (0-4) + 1
+            const currentCatQs = gameData.filter(d => d.Category === activeQ.Category && d.Round == currentRound);
+            const cost = currentCatQs.indexOf(activeQ) + 1;
+            currentBank += cost;
+            teamLocks[activeTeam] = null; // Снимаем замок при успехе
+        } else {
+            activeQ.tries += 1;
+            if (activeQ.tries >= 2) {
+                activeQ.status = 'fail'; // Оба ошиблись
+                teamLocks[0] = (teamLocks[0] === activeQ.Category) ? null : teamLocks[0];
+                teamLocks[1] = (teamLocks[1] === activeQ.Category) ? null : teamLocks[1];
+            } else {
+                teamLocks[activeTeam] = activeQ.Category; // Блокируем тему ошибившейся команде
+            }
+            currentBank = 0; lockedCategory = null; switchTeam();
+        }
+        updateUI(); renderGrid();
+    }
+
+    function saveToBank() {
+        const scoreVal = document.getElementById(`score-${activeTeam}`);
+        scoreVal.innerText = parseInt(scoreVal.innerText) + currentBank;
+        currentBank = 0; lockedCategory = null; switchTeam(); renderGrid();
+    }
+
+    function switchTeam() { activeTeam = activeTeam === 0 ? 1 : 0; updateUI(); }
+
+    function updateUI() {
+        document.getElementById('panel-0').classList.toggle('active-team', activeTeam === 0);
+        document.getElementById('panel-1').classList.toggle('active-team', activeTeam === 1);
+        document.getElementById('bank-0').innerText = `БАНК: ${activeTeam === 0 ? currentBank : 0}`;
+        document.getElementById('bank-1').innerText = `БАНК: ${activeTeam === 1 ? currentBank : 0}`;
+        document.getElementById('bankBtn-0').disabled = (activeTeam !== 0 || currentBank === 0);
+        document.getElementById('bankBtn-1').disabled = (activeTeam !== 1 || currentBank === 0);
+    }
+
+    function switchRound(r) {
+        if(!confirm("Сменить раунд? Банк и блокировки текущего раунда обнулятся.")) return;
+        currentRound = r; currentBank = 0; lockedCategory = null; teamLocks = [null, null];
+        document.getElementById('roundTitle').innerText = `РАУНД ${r}`;
+        updateUI(); renderGrid();
+    }
+</script>
+</body>
+</html>
