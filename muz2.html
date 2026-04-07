@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Fixed Version</title>
+    <title>Викторина - Полная Версия</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -13,36 +13,44 @@
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         #gameInterface { display: none; width: 100%; height: 100%; }
         #uploadScreen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 2000; }
+        
         .side-panel { width: 340px; display: flex; flex-direction: column; align-items: center; padding: 25px; transition: 0.5s; border: 2px solid transparent; }
         .left { background: linear-gradient(to bottom, var(--panel-left), #000); }
         .right { background: linear-gradient(to bottom, var(--panel-right), #000); }
         .active-team { box-shadow: inset 0 0 80px rgba(255,255,255,0.25); border-color: white; z-index: 10; }
+        
         .team-name { font-size: 1.5rem; font-weight: 900; text-align: center; width: 100%; height: 5.5rem; display: flex; align-items: center; justify-content: center; margin: 10px 0; overflow: hidden; line-height: 1.2; }
         .turn-status { font-size: 0.85rem; height: 50px; text-align: center; display: flex; align-items: center; justify-content: center; width: 100%; }
         .badge-choosing { color: var(--gold); border: 2px solid var(--gold); padding: 5px 10px; font-weight: 900; border-radius: 5px; background: rgba(255, 204, 0, 0.1); }
         .badge-answering { color: #fff; border: 2px solid #fff; padding: 5px 10px; font-weight: 900; border-radius: 5px; }
+        
         .score-box { font-size: 5rem; font-weight: 900; margin: 5px 0; }
         .bank-info { font-size: 1.4rem; color: var(--gold); margin-bottom: 20px; font-weight: 800; border-bottom: 2px solid; visibility: hidden; }
+        
         .main-content { flex: 1; padding: 30px; display: flex; flex-direction: column; }
         .grid { display: grid; gap: 10px; grid-template-columns: 280px repeat(5, 1fr); margin-top: 20px; }
+        
+        .round-switcher { display: flex; gap: 10px; background: #161625; padding: 5px; border-radius: 15px; border: 1px solid #444; }
+        .round-btn { padding: 12px 25px; border: none; border-radius: 10px; background: transparent; color: #777; font-weight: 900; cursor: pointer; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        .round-btn.active { background: var(--gold); color: black; box-shadow: 0 0 15px rgba(255,204,0,0.3); }
+
         .category-btn { background: #161625; border: 2px solid #333; color: white; padding: 10px 15px; font-weight: 800; border-radius: 10px; cursor: pointer; text-transform: uppercase; font-size: 0.9rem; height: 4.5rem; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
         .category-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        
         .q-cell { background: rgba(255,255,255,0.05); border: 2px solid #222; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: rgba(255,255,255,0.1); transition: 0.3s; }
         .q-cell.active-q { border-color: var(--gold); color: white; background: #1a1a2e; }
         .q-cell.correct { background: var(--correct); color: white; border-color: white; opacity: 1; }
         .q-cell.wrong-total { background: var(--wrong); color: white; opacity: 0.4; }
-        .round-switcher { display: flex; gap: 10px; background: #161625; padding: 5px; border-radius: 15px; border: 1px solid #444; }
-        .round-btn { padding: 12px 25px; border: none; border-radius: 10px; background: transparent; color: #777; font-weight: 900; cursor: pointer; transition: 0.3s; text-transform: uppercase; }
-        .round-btn.active { background: var(--gold); color: black; }
+        
         #qModal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; z-index: 1000; }
-        #mediaBox { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; position: relative; }
+        #yt-container { width: 640px; height: 360px; display: none; border: 3px solid #333; border-radius: 15px; overflow: hidden; background: #000; margin-bottom: 20px; }
+        #mediaBox img { max-height: 50vh; border-radius: 15px; border: 3px solid #333; margin-bottom: 20px; }
         #qText { font-size: 2.5rem; text-align: center; margin: 10px; font-weight: 700; max-width: 90%; }
         .ans-text { color: var(--gold); font-size: 3rem; margin-top: 20px; display: none; font-weight: 900; text-align: center; border: 4px solid var(--gold); padding: 20px; border-radius: 20px; }
+        
         .control-btn { padding: 20px 40px; font-size: 1.2rem; font-weight: 800; border-radius: 15px; cursor: pointer; border: none; margin: 10px; min-width: 200px; }
         .btn-bank { background: var(--gold); color: black; width: 100%; display: none; }
-        .btn-audio-fix { background: #555; color: white; min-width: auto; padding: 10px 20px; margin-bottom: 20px; font-size: 0.9rem; border: 2px solid #888; }
-        .yt-hidden { position: absolute; top: -9999px; left: -9999px; }
-        .yt-visible { width: 640px; height: 360px; border-radius: 15px; border: 2px solid #333; }
+        .btn-audio-fix { background: #444; color: white; min-width: auto; padding: 10px 25px; margin-bottom: 20px; font-size: 1rem; border: 2px solid #666; }
     </style>
 </head>
 <body>
@@ -53,8 +61,6 @@
 </div>
 
 <div id="gameInterface">
-    <div id="yt-player-container" class="yt-hidden"><div id="yt-player"></div></div>
-
     <div class="side-panel left active-team" id="panel-0">
         <div id="status-0" class="turn-status"></div>
         <div class="team-name" contenteditable="true">КОМАНДА 1</div>
@@ -64,7 +70,7 @@
     </div>
 
     <div class="main-content">
-        <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid #333; margin-bottom: 10px;">
             <div class="round-switcher">
                 <button id="rb1" class="round-btn active" onclick="switchRound(1)">РАУНД 1</button>
                 <button id="rb2" class="round-btn" onclick="switchRound(2)">РАУНД 2</button>
@@ -83,7 +89,8 @@
 </div>
 
 <div id="qModal">
-    <button id="audioFixBtn" class="control-btn btn-audio-fix" style="display:none;" onclick="toggleMediaPlayback()">▶ RE-PLAY / STOP</button>
+    <button id="audioBtn" class="control-btn btn-audio-fix" style="display:none;" onclick="toggleMedia()">▶ PLAY / STOP</button>
+    <div id="yt-container"><div id="yt-player"></div></div>
     <div id="mediaBox"></div>
     <div id="qText"></div>
     <div id="ansText" class="ans-text"></div>
@@ -96,7 +103,7 @@
 
 <script>
     let gameData = [], currentRound = 1, activeTeam = 0, currentBank = 0, activeQ = null;
-    let lockedCategory = null, player = null;
+    let lockedCategory = null, player = null, playerReady = false;
     let teamLocks = [[], []];
 
     const tag = document.createElement('script');
@@ -105,9 +112,9 @@
     
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', { 
-            height: '360', width: '640', 
+            height: '100%', width: '100%',
             playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0, 'modestbranding': 1 },
-            events: { 'onReady': (e) => e.target.setVolume(50) }
+            events: { 'onReady': () => { playerReady = true; } }
         });
     }
 
@@ -156,40 +163,26 @@
     }
 
     function playMedia(type, url, start, duration) {
-        const container = document.getElementById('yt-player-container');
+        const ytBox = document.getElementById('yt-container');
         const mBox = document.getElementById('mediaBox');
-        const audioBtn = document.getElementById('audioFixBtn');
+        const aBtn = document.getElementById('audioBtn');
         
+        mBox.innerHTML = ''; ytBox.style.display = 'none'; aBtn.style.display = 'none';
         if (player && player.stopVideo) player.stopVideo();
-        mBox.innerHTML = '';
-        container.className = 'yt-hidden';
-        audioBtn.style.display = 'none';
 
-        if (!url || !type || url === "" || url === "undefined") return;
+        if (!url || url === "" || url === "undefined") return;
 
         if (type === 'image') {
-            mBox.innerHTML = `<img src="${url}" style="max-height:50vh; border-radius:15px; border: 3px solid #333;">`;
-        } else if (type === 'video' || type === 'audio') {
+            mBox.innerHTML = `<img src="${url}">`;
+        } else if ((type === 'video' || type === 'audio') && playerReady) {
             const vId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('be/')[1];
-            if (!vId) return;
-
-            if (type === 'video') {
-                container.className = 'yt-visible';
-                mBox.appendChild(container);
-            } else {
-                audioBtn.style.display = 'block';
-            }
-
-            player.loadVideoById({
-                videoId: vId,
-                startSeconds: parseInt(start) || 0,
-                endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
-            });
-            player.playVideo();
+            if (type === 'video') ytBox.style.display = 'block';
+            if (type === 'audio') aBtn.style.display = 'block';
+            player.loadVideoById({ videoId: vId, startSeconds: parseInt(start) || 0, endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30) });
         }
     }
 
-    function toggleMediaPlayback() {
+    function toggleMedia() {
         if (!player) return;
         const state = player.getPlayerState();
         state === 1 ? player.pauseVideo() : player.playVideo();
@@ -201,20 +194,21 @@
         const q = gameData.find(d => d.Round == currentRound && d.Category === catName && d.status === 'open');
         if (!q) return;
         activeQ = q; lockedCategory = catName;
-        
-        document.getElementById('ansText').style.display = 'none';
-        document.getElementById('modalControls').style.display = 'flex';
-        document.getElementById('closeQBtn').style.display = 'none';
 
-        const qIdx = gameData.filter(d => d.Category === catName && d.Round == currentRound).indexOf(q) + 1;
+        const catQs = gameData.filter(d => d.Category === catName && d.Round == currentRound);
+        const qIdx = catQs.indexOf(q) + 1;
+
+        // Восстановление подписей
         document.getElementById('hint-correct').innerText = `(+${currentRound === 2 ? qIdx*2 : qIdx} в банк)`;
         document.getElementById('hint-wrong').innerText = currentRound === 1 ? `(0 штраф, переход)` : `(-${qIdx} счет, переход)`;
 
+        document.getElementById('ansText').style.display = 'none';
+        document.getElementById('modalControls').style.display = 'flex';
+        document.getElementById('closeQBtn').style.display = 'none';
         document.getElementById('qText').innerText = q.Question || "";
         document.getElementById('ansText').innerText = "ОТВЕТ: " + (q.Answer || "");
-        
-        playMedia(q.QType, q.QMediaURL, q.QStartTime, q.QDuration);
         document.getElementById('qModal').style.display = 'flex';
+        playMedia(q.QType, q.QMediaURL, q.QStartTime, q.QDuration);
     }
 
     function handleResult(isCorrect) {
@@ -225,13 +219,10 @@
             activeQ.status = 'correct';
             currentBank += (currentRound === 2 ? qIdxInCat * 2 : qIdxInCat);
             teamLocks[activeTeam] = teamLocks[activeTeam].filter(c => c !== activeQ.Category);
-            
-            const isLastInCat = categoryQs.every(q => q.status !== 'open');
-            if (isLastInCat) {
+            if (categoryQs.every(q => q.status !== 'open')) {
                 const s = document.getElementById(`score-${activeTeam}`);
                 s.innerText = parseInt(s.innerText) + currentBank;
-                currentBank = 0; lockedCategory = null;
-                smartSwitch();
+                currentBank = 0; lockedCategory = null; smartSwitch();
             }
             showAnswerState();
         } else {
@@ -244,14 +235,10 @@
                 activeQ.status = 'fail';
                 teamLocks[0] = teamLocks[0].filter(c => c !== activeQ.Category);
                 teamLocks[1] = teamLocks[1].filter(c => c !== activeQ.Category);
-                currentBank = 0; lockedCategory = null; 
-                smartSwitch();
-                showAnswerState();
+                currentBank = 0; lockedCategory = null; smartSwitch(); showAnswerState();
             } else {
                 if (!teamLocks[activeTeam].includes(activeQ.Category)) teamLocks[activeTeam].push(activeQ.Category);
-                currentBank = 0; lockedCategory = null; 
-                smartSwitch();
-                closeModal();
+                currentBank = 0; lockedCategory = null; smartSwitch(); closeModal();
             }
         }
         updateUI(); renderGrid();
@@ -261,15 +248,12 @@
         document.getElementById('modalControls').style.display = 'none';
         document.getElementById('ansText').style.display = 'block';
         document.getElementById('closeQBtn').style.display = 'block';
-        // Фикс воспроизведения медиа для ответа
         playMedia(activeQ.AType, activeQ.AMediaURL, activeQ.AStartTime, activeQ.ADuration);
-        updateUI(); renderGrid();
     }
 
     function closeModal() {
         if (player && player.stopVideo) player.stopVideo();
         document.getElementById('qModal').style.display = 'none';
-        document.body.appendChild(document.getElementById('yt-player-container'));
     }
 
     function saveToBank() {
