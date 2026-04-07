@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - No Spoilers Final</title>
+    <title>Викторина - Zero Spoilers Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -29,20 +29,15 @@
         
         #yt-wrapper {
             width: 640px; height: 360px;
-            overflow: hidden;
-            position: relative;
-            border-radius: 15px;
-            background: #000;
-            display: none;
-            border: 2px solid #333;
+            overflow: hidden; position: relative;
+            border-radius: 15px; background: #000;
+            display: none; border: 2px solid #333;
         }
         #yt-player-box {
-            position: absolute;
-            top: -15%; left: -15%;
+            position: absolute; top: -15%; left: -15%;
             width: 130%; height: 130%;
-            pointer-events: none;
-            opacity: 0; /* Изначально скрыт для предотвращения мерцания */
-            transition: opacity 0.4s ease-in-out;
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.3s ease;
         }
         #audio-placeholder {
             position: absolute; inset: 0;
@@ -106,7 +101,7 @@
 
 <script>
     let gameData = [], activeTeam = 0, currentBank = 0, activeQ = null;
-    let player = null, playerReady = false;
+    let player = null, playerReady = false, monitorInterval = null;
 
     const tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
@@ -115,17 +110,24 @@
     function onYouTubeIframeAPIReady() {
         player = new YT.Player('yt-player', { 
             height: '100%', width: '100%',
-            events: { 
-                'onReady': () => { playerReady = true; },
-                'onStateChange': (e) => {
-                    // Прячем плеер в конце, чтобы не было обложки
-                    if (e.data === YT.PlayerState.ENDED) {
-                        document.getElementById('yt-player-box').style.opacity = '0';
-                    }
-                }
-            },
-            playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'iv_load_policy': 3 }
+            playerVars: { 'autoplay': 1, 'controls': 0, 'modestbranding': 1, 'rel': 0, 'iv_load_policy': 3 },
+            events: { 'onReady': () => { playerReady = true; } }
         });
+    }
+
+    // Мониторинг времени видео для превентивного скрытия
+    function startEndMonitor(endSec) {
+        clearInterval(monitorInterval);
+        monitorInterval = setInterval(() => {
+            if (player && typeof player.getCurrentTime === 'function') {
+                let curr = player.getCurrentTime();
+                // Скрываем за 0.3 секунды до реального конца или конца отрезка
+                if (curr >= endSec - 0.3) {
+                    document.getElementById('yt-player-box').style.opacity = '0';
+                    clearInterval(monitorInterval);
+                }
+            }
+        }, 100);
     }
 
     document.getElementById('fileInput').addEventListener('change', e => {
@@ -165,13 +167,14 @@
         const pBox = document.getElementById('yt-player-box');
         const placeholder = document.getElementById('audio-placeholder');
         const repeatBtn = document.getElementById('repeatBtn');
-        const isAnswerMode = document.getElementById('ansText').style.display === 'block';
+        const isAns = document.getElementById('ansText').style.display === 'block';
 
         mBox.innerHTML = '';
         wrapper.style.display = 'none';
         repeatBtn.style.display = 'none';
         placeholder.style.display = 'none';
-        pBox.style.opacity = '0'; // Скрываем перед загрузкой
+        pBox.style.opacity = '0';
+        clearInterval(monitorInterval);
 
         if (!url || url === "undefined" || url === "") return;
 
@@ -179,35 +182,33 @@
             mBox.innerHTML = `<img src="${url}">`;
         } else if ((type === 'video' || type === 'audio') && playerReady) {
             wrapper.style.display = 'block';
+            if (!isAns) repeatBtn.style.display = 'block';
             
-            // Кнопка повтора только для вопросов, не для ответов
-            if (!isAnswerMode) {
-                repeatBtn.style.display = 'block';
-            }
-            
-            if (type === 'audio') {
+            // Надпись АУДИО только если это НЕ ответ
+            if (type === 'audio' && !isAns) {
                 placeholder.style.display = 'flex';
             }
 
             const vId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('be/')[1];
+            const startSec = parseInt(start) || 0;
+            const endSec = startSec + (parseInt(duration) || 30);
+
             player.loadVideoById({
                 videoId: vId,
-                startSeconds: parseInt(start) || 0,
-                endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
+                startSeconds: startSec,
+                endSeconds: endSec
             });
-            player.playVideo();
+            
+            startEndMonitor(endSec);
 
-            // Если это видео, проявляем его через 400мс, чтобы не было мерцания обложки
             if (type === 'video') {
-                setTimeout(() => { pBox.style.opacity = '1'; }, 450);
+                setTimeout(() => { pBox.style.opacity = '1'; }, 500);
             }
         }
     }
 
     function replayMedia() {
-        if (!activeQ) return;
-        // Кнопка повтора вызывается только из режима вопроса (логика скрытия выше)
-        playMedia(activeQ.QType, activeQ.QMediaURL, activeQ.QStartTime, activeQ.QDuration);
+        if (activeQ) playMedia(activeQ.QType, activeQ.QMediaURL, activeQ.QStartTime, activeQ.QDuration);
     }
 
     function startQuestion(catName) {
@@ -239,12 +240,12 @@
         document.getElementById('modalControls').style.display = 'none';
         document.getElementById('ansText').style.display = 'block';
         document.getElementById('closeQBtn').style.display = 'block';
-        // При переходе к ответу кнопка REPEAT скроется автоматически внутри playMedia
         playMedia(activeQ.AType, activeQ.AMediaURL, activeQ.AStartTime, activeQ.ADuration);
     }
 
     function closeModal() {
         if (player) player.stopVideo();
+        clearInterval(monitorInterval);
         document.getElementById('qModal').style.display = 'none';
     }
 
