@@ -123,13 +123,32 @@
     tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
     
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('yt-player', { 
-            height: '360', width: '640', 
-            playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0 },
-            events: { 'onReady': (e) => e.target.setVolume(50) }
-        });
-    }
+	function onYouTubeIframeAPIReady() {
+		player = new YT.Player('yt-player', {
+			height: '360',
+			width: '640',
+			playerVars: {
+				'autoplay': 1,
+				'controls': 0,
+				'rel': 0,
+				'showinfo': 0,
+				'modestbranding': 1,
+				'iv_load_policy': 3,
+				'enablejsapi': 1,
+				'origin': window.location.origin // Критично для работы на сервеers
+			},
+			events: {
+				'onReady': (e) => e.target.setVolume(50),
+				'onError': (e) => {
+					console.error("Ошибка YouTube API:", e.data);
+					// Если ошибка 101 или 150 — видео запрещено встраивать
+					if(e.data === 150 || e.data === 101) {
+						alert("Это видео запрещено автором для показа на сторонних сайтах.");
+					}
+				}
+			}
+		});
+	}
 
     document.getElementById('fileInput').addEventListener('change', e => {
         const reader = new FileReader();
@@ -175,40 +194,57 @@
         });
     }
 
-    function playMedia(type, url, start, duration) {
-        const container = document.getElementById('yt-player-container');
-        const mBox = document.getElementById('mediaBox');
-        const audioBtn = document.getElementById('audioFixBtn');
-        
-        if (player) player.stopVideo();
-        mBox.innerHTML = '';
-        container.className = 'yt-hidden';
-        audioBtn.style.display = 'none';
+	function playMedia(type, url, start, duration) {
+		const container = document.getElementById('yt-player-container');
+		const mBox = document.getElementById('mediaBox');
+		const audioBtn = document.getElementById('audioFixBtn');
+		
+		// 1. Полностью останавливаем и сбрасываем плеер
+		if (player && player.stopVideo) {
+			player.stopVideo();
+			player.clearVideo(); 
+		}
+		
+		mBox.innerHTML = '';
+		container.className = 'yt-hidden';
+		audioBtn.style.display = 'none';
 
-        if (!url || !type) return;
+		if (!url || !type) return;
 
-        if (type === 'image') {
-            mBox.innerHTML = `<img src="${url}" style="max-height:50vh; border-radius:15px; border: 3px solid #333;">`;
-        } else if (type === 'video' || type === 'audio') {
-            const vId = url.split('v=')[1]?.split('&')[0] || url.split('be/')[1];
-            if (!vId) return;
+		if (type === 'image') {
+			mBox.innerHTML = `<img src="${url}" style="max-height:50vh; border-radius:15px; border: 3px solid #333;">`;
+		} else if (type === 'video' || type === 'audio') {
+			// Регулярное выражение для извлечения ID из любых ссылок (youtu.be, youtube.com, со временем и т.д.)
+			const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+			const match = url.match(regExp);
+			const vId = (match && match[2].length == 11) ? match[2] : null;
 
-            if (type === 'video') {
-                container.className = 'yt-visible';
-                mBox.appendChild(container);
-            } else {
-                audioBtn.style.display = 'block';
-            }
+			if (!vId) {
+				console.error("Не удалось распознать ID видео:", url);
+				return;
+			}
 
-            player.loadVideoById({
-                videoId: vId,
-                startSeconds: parseInt(start) || 0,
-                endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
-            });
-            player.setVolume(50);
-            player.playVideo();
-        }
-    }
+			if (type === 'video') {
+				container.className = 'yt-visible';
+				mBox.appendChild(container); 
+			} else {
+				audioBtn.style.display = 'block';
+				// Контейнер остается в yt-hidden, но звук идет
+			}
+
+			// 2. Используем небольшую задержку перед загрузкой, чтобы DOM успел обновиться
+			setTimeout(() => {
+				player.loadVideoById({
+					videoId: vId,
+					startSeconds: parseInt(start) || 0,
+					endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
+				});
+				player.unMute();
+				player.setVolume(50);
+				player.playVideo();
+			}, 100);
+		}
+	}
 
     function toggleMediaPlayback() {
         if (!player) return;
