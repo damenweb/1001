@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина</title>
+    <title>Викторина 222</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -49,7 +49,7 @@
         .round-btn.active { background: var(--gold); color: black; box-shadow: 0 0 15px rgba(255,204,0,0.3); }
 
         #qModal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; z-index: 1000; }
-        #mediaBox { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; position: relative; }
+        #mediaBox { width: 100%; display: flex; justify-content: center; margin-bottom: 20px; position: relative; min-height: 100px; }
         #qText { font-size: 2.5rem; text-align: center; margin: 10px; font-weight: 700; max-width: 90%; }
         .ans-text { color: var(--gold); font-size: 3rem; margin-top: 20px; display: none; font-weight: 900; text-align: center; border: 4px solid var(--gold); padding: 20px; border-radius: 20px; }
 
@@ -59,8 +59,8 @@
 
         #fileInput { background: #1a1a2e; color: white; padding: 20px; border: 2px dashed #444; border-radius: 15px; cursor: pointer; }
         
-        .yt-hidden { position: absolute; top: -9999px; left: -9999px; }
-        .yt-visible { width: 640px; height: 360px; border-radius: 15px; }
+        .yt-hidden { position: absolute; top: -9999px; left: -9999px; visibility: hidden; }
+        .yt-visible { width: 640px; height: 360px; border-radius: 15px; visibility: visible; }
     </style>
 </head>
 <body>
@@ -119,36 +119,24 @@
     let lockedCategory = null, player = null;
     let teamLocks = [[], []]; 
 
+    // Загрузка YouTube API
     const tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
     
-	function onYouTubeIframeAPIReady() {
-		player = new YT.Player('yt-player', {
-			height: '360',
-			width: '640',
-			playerVars: {
-				'autoplay': 1,
-				'controls': 0,
-				'rel': 0,
-				'showinfo': 0,
-				'modestbranding': 1,
-				'iv_load_policy': 3,
-				'enablejsapi': 1,
-				'origin': window.location.origin // Критично для работы на сервеers
-			},
-			events: {
-				'onReady': (e) => e.target.setVolume(50),
-				'onError': (e) => {
-					console.error("Ошибка YouTube API:", e.data);
-					// Если ошибка 101 или 150 — видео запрещено встраивать
-					if(e.data === 150 || e.data === 101) {
-						alert("Это видео запрещено автором для показа на сторонних сайтах.");
-					}
-				}
-			}
-		});
-	}
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('yt-player', { 
+            height: '360', width: '640', 
+            playerVars: { 'autoplay': 1, 'controls': 0, 'rel': 0, 'origin': window.location.origin },
+            events: { 
+                'onReady': (e) => { e.target.setVolume(100); },
+                'onStateChange': (e) => {
+                    // Автоплей фикс для некоторых браузеров
+                    if (e.data === YT.PlayerState.PLAYING) { e.target.setVolume(100); e.target.unMute(); }
+                }
+            }
+        });
+    }
 
     document.getElementById('fileInput').addEventListener('change', e => {
         const reader = new FileReader();
@@ -194,57 +182,44 @@
         });
     }
 
-	function playMedia(type, url, start, duration) {
-		const container = document.getElementById('yt-player-container');
-		const mBox = document.getElementById('mediaBox');
-		const audioBtn = document.getElementById('audioFixBtn');
-		
-		// 1. Полностью останавливаем и сбрасываем плеер
-		if (player && player.stopVideo) {
-			player.stopVideo();
-			player.clearVideo(); 
-		}
-		
-		mBox.innerHTML = '';
-		container.className = 'yt-hidden';
-		audioBtn.style.display = 'none';
+    function playMedia(type, url, start, duration) {
+        const container = document.getElementById('yt-player-container');
+        const mBox = document.getElementById('mediaBox');
+        const audioBtn = document.getElementById('audioFixBtn');
+        
+        if (player && typeof player.stopVideo === 'function') player.stopVideo();
+        mBox.innerHTML = '';
+        container.className = 'yt-hidden';
+        audioBtn.style.display = 'none';
 
-		if (!url || !type) return;
+        if (!url || !type || url === "undefined") return;
 
-		if (type === 'image') {
-			mBox.innerHTML = `<img src="${url}" style="max-height:50vh; border-radius:15px; border: 3px solid #333;">`;
-		} else if (type === 'video' || type === 'audio') {
-			// Регулярное выражение для извлечения ID из любых ссылок (youtu.be, youtube.com, со временем и т.д.)
-			const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-			const match = url.match(regExp);
-			const vId = (match && match[2].length == 11) ? match[2] : null;
+        if (type === 'image') {
+            mBox.innerHTML = `<img src="${url}" style="max-height:50vh; border-radius:15px; border: 3px solid #333;">`;
+        } else if (type === 'video' || type === 'audio') {
+            let vId = "";
+            if (url.includes('v=')) vId = url.split('v=')[1].split('&')[0];
+            else if (url.includes('be/')) vId = url.split('be/')[1].split('?')[0];
+            
+            if (!vId) return;
 
-			if (!vId) {
-				console.error("Не удалось распознать ID видео:", url);
-				return;
-			}
+            if (type === 'video') {
+                container.className = 'yt-visible';
+                mBox.appendChild(container);
+            } else {
+                audioBtn.style.display = 'block';
+            }
 
-			if (type === 'video') {
-				container.className = 'yt-visible';
-				mBox.appendChild(container); 
-			} else {
-				audioBtn.style.display = 'block';
-				// Контейнер остается в yt-hidden, но звук идет
-			}
-
-			// 2. Используем небольшую задержку перед загрузкой, чтобы DOM успел обновиться
-			setTimeout(() => {
-				player.loadVideoById({
-					videoId: vId,
-					startSeconds: parseInt(start) || 0,
-					endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
-				});
-				player.unMute();
-				player.setVolume(50);
-				player.playVideo();
-			}, 100);
-		}
-	}
+            player.loadVideoById({
+                videoId: vId,
+                startSeconds: parseInt(start) || 0,
+                endSeconds: (parseInt(start) || 0) + (parseInt(duration) || 30)
+            });
+            player.unMute();
+            player.setVolume(100);
+            player.playVideo();
+        }
+    }
 
     function toggleMediaPlayback() {
         if (!player) return;
@@ -263,15 +238,20 @@
         document.getElementById('modalControls').style.display = 'flex';
         document.getElementById('closeQBtn').style.display = 'none';
 
-        const qIndex = gameData.filter(d => d.Category === catName && d.Round == currentRound).indexOf(q) + 1;
+        const categoryQs = gameData.filter(d => d.Category === catName && d.Round == currentRound);
+        const qIndex = categoryQs.indexOf(q) + 1;
+        
         document.getElementById('hint-correct').innerText = `(+${currentRound === 2 ? qIndex*2 : qIndex} в банк)`;
         document.getElementById('hint-wrong').innerText = currentRound === 1 ? `(0 штраф, переход)` : `(-${qIndex} счет, переход)`;
 
         document.getElementById('qText').innerText = q.Question || "";
         document.getElementById('ansText').innerText = "ОТВЕТ: " + (q.Answer || "");
         
-        playMedia(q.QType, q.QMediaURL, q.QStartTime, q.QDuration);
         document.getElementById('qModal').style.display = 'flex';
+        // Запуск медиа
+        setTimeout(() => {
+            playMedia(q.QType, q.QMediaURL, q.QStartTime, q.QDuration);
+        }, 100);
     }
 
     function handleResult(isCorrect) {
@@ -296,8 +276,7 @@
         } else {
             if (currentRound === 2) {
                 const s = document.getElementById(`score-${activeTeam}`);
-                //s.innerText = Math.max(0, parseInt(s.innerText) - qIndexInCat);
-				s.innerText = parseInt(s.innerText) - qIndexInCat;
+                s.innerText = parseInt(s.innerText) - qIndexInCat;
             }
             activeQ.tries += 1;
             
@@ -323,15 +302,13 @@
         document.getElementById('ansText').style.display = 'block';
         document.getElementById('closeQBtn').style.display = 'block';
         
-        // Переключаем медиа на контент ответа
         playMedia(activeQ.AType, activeQ.AMediaURL, activeQ.AStartTime, activeQ.ADuration);
-        
         updateUI();
         renderGrid();
     }
 
     function closeModal() {
-        if (player) player.stopVideo();
+        if (player && typeof player.stopVideo === 'function') player.stopVideo();
         document.getElementById('qModal').style.display = 'none';
         // Возвращаем плеер в скрытый контейнер
         document.body.appendChild(document.getElementById('yt-player-container'));
@@ -371,7 +348,6 @@
         document.getElementById(`bank-${activeTeam}`).style.visibility = showBank ? 'visible' : 'hidden';
         document.getElementById(`bankBtn-${activeTeam}`).style.display = showBank ? 'block' : 'none';
         
-        // Скрываем банк у неактивной команды всегда
         document.getElementById(`bank-${other}`).style.visibility = 'hidden';
         document.getElementById(`bankBtn-${other}`).style.display = 'none';
 
