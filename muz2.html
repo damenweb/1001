@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Full Version</title>
+    <title>Викторина - Fixed Final</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -44,7 +44,6 @@
 
         #qModal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; z-index: 1000; }
         
-        /* НОВЫЙ БЛОК МЕДИА */
         #yt-wrapper {
             width: 640px; height: 360px;
             overflow: hidden; position: relative;
@@ -274,11 +273,17 @@
             currentBank += (currentRound === 2 ? qIdxInCat * 2 : qIdxInCat);
             teamLocks[activeTeam] = teamLocks[activeTeam].filter(c => c !== activeQ.Category);
             
+            // Сначала обновляем интерфейс, чтобы ячейка покрасилась
+            renderGrid();
+            updateUI();
+
+            // Проверяем, последний ли это вопрос в категории
             if (categoryQs.every(q => q.status !== 'open')) {
                 const s = document.getElementById(`score-${activeTeam}`);
                 s.innerText = parseInt(s.innerText) + currentBank;
-                currentBank = 0; lockedCategory = null;
-                smartSwitch(); showAnswerState(); return;
+                currentBank = 0; 
+                lockedCategory = null;
+                smartSwitch(); 
             }
             showAnswerState();
         } else {
@@ -291,13 +296,19 @@
                 activeQ.status = 'fail';
                 teamLocks[0] = teamLocks[0].filter(c => c !== activeQ.Category);
                 teamLocks[1] = teamLocks[1].filter(c => c !== activeQ.Category);
-                currentBank = 0; lockedCategory = null; smartSwitch(); showAnswerState();
+                currentBank = 0; lockedCategory = null; 
+                renderGrid();
+                smartSwitch(); 
+                showAnswerState();
             } else {
                 if (!teamLocks[activeTeam].includes(activeQ.Category)) teamLocks[activeTeam].push(activeQ.Category);
-                currentBank = 0; lockedCategory = null; smartSwitch(); closeModal();
+                currentBank = 0; lockedCategory = null; 
+                renderGrid();
+                smartSwitch(); 
+                closeModal();
             }
         }
-        updateUI(); renderGrid();
+        updateUI();
     }
 
     function showAnswerState() {
