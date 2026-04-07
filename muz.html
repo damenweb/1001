@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Audio/Video Fixed</title>
+    <title>Викторина - Fixed Replay</title>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -15,10 +15,7 @@
         #uploadScreen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 2000; }
         
         .side-panel { width: 340px; display: flex; flex-direction: column; align-items: center; padding: 25px; }
-        .left { background: linear-gradient(to bottom, var(--panel-left), #000); }
-        .right { background: linear-gradient(to bottom, var(--panel-right), #000); }
         .active-team { box-shadow: inset 0 0 80px rgba(255,255,255,0.25); border: 2px solid white; }
-        
         .score-box { font-size: 5rem; font-weight: 900; margin: 5px 0; }
         .main-content { flex: 1; padding: 30px; display: flex; flex-direction: column; }
         .grid { display: grid; gap: 10px; grid-template-columns: 280px repeat(5, 1fr); margin-top: 20px; }
@@ -30,7 +27,6 @@
 
         #qModal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; align-items: center; justify-content: center; padding: 40px; z-index: 1000; }
         
-        /* Плеер */
         #yt-wrapper {
             width: 640px; height: 360px;
             overflow: hidden;
@@ -40,23 +36,20 @@
             display: none;
             border: 2px solid #333;
         }
-        /* Зум для обрезки названий */
         #yt-player-box {
             position: absolute;
             top: -15%; left: -15%;
             width: 130%; height: 130%;
             pointer-events: none;
-            transition: opacity 0.3s;
+            transition: opacity 0.2s;
         }
-        #yt-shield { position: absolute; inset: 0; z-index: 10; background: transparent; }
-
-        /* Иконка для аудио режима */
         #audio-placeholder {
             position: absolute; inset: 0;
             display: none; flex-direction: column;
             align-items: center; justify-content: center;
             background: #111; z-index: 5;
         }
+        #yt-shield { position: absolute; inset: 0; z-index: 10; background: transparent; }
 
         #mediaBox img { max-height: 50vh; border-radius: 15px; border: 3px solid #333; }
         #qText { font-size: 2.5rem; text-align: center; margin: 20px; font-weight: 700; }
@@ -69,7 +62,7 @@
 <body>
 
 <div id="uploadScreen">
-    <h1>ЗАГРУЗИТЕ ФАЙЛ</h1>
+    <h1>ЗАГРУЗИТЕ XLSX</h1>
     <input type="file" id="fileInput" accept=".xlsx, .xls">
 </div>
 
@@ -94,7 +87,7 @@
         <div id="yt-shield"></div>
         <div id="audio-placeholder">
             <span style="font-size: 80px;">🔊</span>
-            <p style="color: #555; margin-top: 10px;">АУДИО-ВОПРОС</p>
+            <p style="color: #gold; margin-top: 10px; font-weight: 900;">АУДИО-ВОПРОС</p>
         </div>
         <div id="yt-player-box"><div id="yt-player"></div></div>
     </div>
@@ -114,7 +107,6 @@
     let gameData = [], activeTeam = 0, currentBank = 0, activeQ = null;
     let player = null, playerReady = false;
 
-    // Инициализация API
     const tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
@@ -125,8 +117,9 @@
             events: { 
                 'onReady': () => { playerReady = true; },
                 'onStateChange': (e) => {
+                    // В конце видео просто делаем плеер прозрачным, чтобы не было спойлеров
                     if (e.data === YT.PlayerState.ENDED) {
-                        document.getElementById('yt-wrapper').style.display = 'none';
+                        document.getElementById('yt-player-box').style.opacity = '0';
                     }
                 }
             },
@@ -176,7 +169,7 @@
         wrapper.style.display = 'none';
         repeatBtn.style.display = 'none';
         placeholder.style.display = 'none';
-        pBox.style.opacity = '1';
+        pBox.style.opacity = '1'; // Возвращаем видимость плееру
 
         if (!url || url === "undefined" || url === "") return;
 
@@ -186,10 +179,11 @@
             wrapper.style.display = 'block';
             repeatBtn.style.display = 'block';
             
-            // ЕСЛИ АУДИО — ПРЯЧЕМ ПЛЕЕР
             if (type === 'audio') {
-                pBox.style.opacity = '0';
+                pBox.style.opacity = '0'; // Звук есть, картинки нет
                 placeholder.style.display = 'flex';
+            } else {
+                pBox.style.opacity = '1'; // Видео режим
             }
 
             const vId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('be/')[1];
@@ -204,11 +198,17 @@
 
     function replayMedia() {
         if (!activeQ) return;
+        // Проверяем, какой сейчас режим: вопрос или ответ
         const isAns = document.getElementById('ansText').style.display === 'block';
         const type = isAns ? activeQ.AType : activeQ.QType;
         const url = isAns ? activeQ.AMediaURL : activeQ.QMediaURL;
         const start = isAns ? activeQ.AStartTime : activeQ.QStartTime;
         const dur = isAns ? activeQ.ADuration : activeQ.QDuration;
+        
+        // Принудительно сбрасываем состояние прозрачности перед повтором
+        document.getElementById('yt-player-box').style.opacity = (type === 'audio') ? '0' : '1';
+        if (type === 'audio') document.getElementById('audio-placeholder').style.display = 'flex';
+        
         playMedia(type, url, start, dur);
     }
 
@@ -247,6 +247,7 @@
     function closeModal() {
         if (player) player.stopVideo();
         document.getElementById('qModal').style.display = 'none';
+        document.getElementById('yt-wrapper').style.display = 'none';
     }
 
     function saveToBank() {
