@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Викторина - Final Logic Fixed</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Викторина</title>
+	<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
-            --bg: #0a0a12; --panel-left: #7b1d1d; --panel-right: #1d3e5e;
+            --bg: #0a0a12; --panel-left: #7b1d1d; --panel-right: #1d3e7b;
             --gold: #ffcc00; --correct: #2ecc71; --wrong: #e74c3c;
         }
         body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; height: 100vh; overflow: hidden; }
@@ -73,7 +74,7 @@
         .badge-answering { color: #fff; border: 2px solid #fff; padding: 5px 10px; font-weight: 900; border-radius: 5px; }
 
         .score-box { font-size: 5rem; font-weight: 900; margin: 5px 0; }
-        .bank-info { font-size: 1.4rem; color: var(--gold); margin-bottom: 20px; font-weight: 800; border-bottom: 2px solid; visibility: hidden; }
+        .bank-info { font-size: 1.4rem; color: var(--gold); margin: 25px 0px 10px 0px; font-weight: 800; visibility: hidden; }
 
         .main-content { flex: 1; padding: 30px; display: flex; flex-direction: column; }
         .grid { display: grid; gap: 10px; grid-template-columns: 280px repeat(5, 1fr); margin-top: 20px; }
@@ -82,7 +83,7 @@
         .category-btn { 
             background: #161625; border: 2px solid #333; color: white; padding: 10px 15px; 
             font-weight: 800; border-radius: 10px; cursor: pointer; text-transform: uppercase; 
-            font-size: 0.9rem; height: 4.5rem; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.2rem; height: 4.5rem; display: flex; align-items: center; justify-content: center; 
             text-align: center; line-height: 1.2; position: relative; overflow: hidden;
         }
         .category-btn span { z-index: 2; position: relative; }
@@ -123,12 +124,25 @@
         #yt-shield { position: absolute; inset: 0; z-index: 10; background: transparent; }
 
         #mediaBox img { max-height: 50vh; border-radius: 15px; border: none; margin-bottom: 20px; }
-        #qText { font-size: 2.5rem; text-align: center; margin: 10px; font-weight: 700; max-width: 90%; display: block; }
-        .ans-text { color: var(--gold); font-size: 3rem; margin-top: 20px; display: none; font-weight: 900; text-align: center; border: none; padding: 20px; border-radius: 20px; }
+        #qText { font-size: 2.5rem; text-align: center; margin: 25px; font-weight: 700; max-width: 90%; display: block; }
+        .ans-text { color: var(--gold); font-size: 2.5rem; text-align: center; margin: 25px; font-weight: 700; max-width: 90%; display: none; }
+		
+		/* Контейнер-стабилизатор для нижних кнопок */
+		.modal-actions-area {
+			height: 100px; /* Фиксированная высота всей зоны кнопок */
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			margin-top: 30px;
+		}
 
-        .control-btn { padding: 20px 40px; font-size: 1.2rem; font-weight: 800; border-radius: 15px; cursor: pointer; border: none; margin: 10px; min-width: 200px; }
-        .btn-bank { background: var(--gold); color: black; width: 100%; display: none; }
-        .btn-repeat { background: #444; color: white; padding: 10px 25px; font-size: 1rem; margin-bottom: 20px; display: none; min-width: auto; }
+		#closeQBtn {
+			min-width: 150px; /* Чтобы кнопка закрыть не была слишком узкой */
+		}
+		
+        .control-btn { padding: 10px 15px; font-size: 1.2rem; font-weight: 800; border-radius: 15px; cursor: pointer; border: none; margin: 10px; min-width: 240px; }
+        .btn-bank { background: var(--gold); color: black; display: none; }
+        .btn-repeat { background: #444; color: white; padding: 10px 15px; font-size: 1rem; margin-bottom: 20px; display: none; min-width: auto; }
 		
 		/* Экран победителя */
 		#winScreen {
@@ -173,8 +187,8 @@
         <div id="status-0" class="turn-status"></div>
         <div class="team-name" contenteditable="true">КОМАНДА 1</div>
         <div class="score-box" id="score-0">0</div>
-        <div class="bank-info" id="bank-0">ТЕКУЩИЙ СЧЕТ: 0</div>
-        <button class="control-btn btn-bank" id="bankBtn-0" onclick="saveToBank()">ПОЛОЖИТЬ В БАНК</button>
+        <div class="bank-info" id="bank-0">РЕЗЕРВ: 0</div>
+        <button class="control-btn btn-bank" id="bankBtn-0" onclick="saveToBank()">ПОЛОЖИТЬ В БАНК<span style="font-size: 0.8rem; display:block">[переход хода]</span></button>
     </div>
 
     <div class="main-content">
@@ -191,14 +205,16 @@
         <div id="status-1" class="turn-status"></div>
         <div class="team-name" contenteditable="true">КОМАНДА 2</div>
         <div class="score-box" id="score-1">0</div>
-        <div class="bank-info" id="bank-1">ТЕКУЩИЙ СЧЕТ: 0</div>
-        <button class="control-btn btn-bank" id="bankBtn-1" onclick="saveToBank()">ЗАБРАТЬ БАЛЛЫ</button>
+        <div class="bank-info" id="bank-1">РЕЗЕРВ: 0</div>
+        <button class="control-btn btn-bank" id="bankBtn-1" onclick="saveToBank()">ПОЛОЖИТЬ В БАНК<span style="font-size: 0.8rem; display:block">[переход хода]</span></button>
     </div>
 </div>
 
 <div id="qModal">
-    <button id="repeatBtn" class="control-btn btn-repeat" onclick="replayMedia()">🔄 ПОВТОРИТЬ</button>
-    <div id="yt-wrapper">
+    <div id="qText"></div>
+    <div id="ansText" class="ans-text"></div>
+	<button id="repeatBtn" class="control-btn btn-repeat" onclick="replayMedia()">🔄 ПОВТОРИТЬ</button>
+	<div id="yt-wrapper">
         <div id="yt-shield"></div>
         <div id="audio-placeholder">
             <span style="font-size: 80px;">🔊</span>
@@ -207,13 +223,13 @@
         <div id="yt-player-box"><div id="yt-player"></div></div>
     </div>
     <div id="mediaBox"></div>
-    <div id="qText"></div>
-    <div id="ansText" class="ans-text"></div>
-    <div id="modalControls" style="display: flex; justify-content: center;">
-        <button class="control-btn" style="background:var(--correct); color:white" onclick="handleResult(true)">ВЕРНО <span id="hint-correct" style="font-size: 0.8rem; display:block"></span></button>
-        <button class="control-btn" style="background:var(--wrong); color:white" onclick="handleResult(false)">НЕВЕРНО <span id="hint-wrong" style="font-size: 0.8rem; display:block"></span></button>
-    </div>
-    <button id="closeQBtn" class="control-btn" style="display:none; background:#444; color:white" onclick="closeModal()">ЗАКРЫТЬ</button>
+		<div class="modal-actions-area">
+		<div id="modalControls" style="display: flex; justify-content: center;">
+			<button class="control-btn" style="background:var(--correct); color:white" onclick="handleResult(true)">ВЕРНО<span id="hint-correct" style="font-size: 0.8rem; display:block"></span></button>
+			<button class="control-btn" style="background:var(--wrong); color:white" onclick="handleResult(false)">НЕВЕРНО<span id="hint-wrong" style="font-size: 0.8rem; display:block"></span></button>
+		</div>
+		<button id="closeQBtn" class="control-btn" style="display:none; background:#444; color:white" onclick="closeModal()">ЗАКРЫТЬ</button>
+	</div>
 </div>
 
 <script>
@@ -307,8 +323,9 @@
 			mBox.innerHTML = `<img src="${url}">`;
 		} else if ((type === 'video' || type === 'audio' || type === 'silent_video') && playerReady) {
 			wrapper.style.display = 'block';
-			if (!isAns) repeatBtn.style.display = 'block';
-			if (type === 'audio' && !isAns) placeholder.style.display = 'flex';
+			//if (!isAns) repeatBtn.style.display = 'block';
+			//if (type === 'audio' && !isAns) placeholder.style.display = 'flex';
+			if (type === 'audio') wrapper.style.display = 'none';
 
 			const vId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('be/')[1];
 			const sSec = parseInt(start) || 0;
@@ -351,8 +368,8 @@
         document.getElementById('closeQBtn').style.display = 'none';
 
         const qIdx = gameData.filter(d => d.Category === catName && d.Round == currentRound).indexOf(q) + 1;
-        document.getElementById('hint-correct').innerText = `(+${currentRound === 2 ? qIdx*2 : qIdx})`;
-        document.getElementById('hint-wrong').innerText = currentRound === 1 ? `(переход хода)` : `(-${qIdx}, переход хода)`;
+        document.getElementById('hint-correct').innerText = `[+${currentRound === 2 ? qIdx*2 : qIdx} в резерв]`;
+        document.getElementById('hint-wrong').innerText = currentRound === 1 ? `[переход хода]` : `[-${qIdx} из банка] [переход хода]`;
 
         document.getElementById('ansText').innerText = "ОТВЕТ: " + (q.Answer || "");
         document.getElementById('qModal').style.display = 'flex';
@@ -514,8 +531,8 @@
 		document.getElementById(`bank-${other}`).style.visibility = 'hidden';
 		document.getElementById(`bankBtn-${other}`).style.display = 'none';
 
-		document.getElementById('bank-0').innerText = `ТЕКУЩИЙ СЧЕТ: ${currentBank}`;
-		document.getElementById('bank-1').innerText = `ТЕКУЩИЙ СЧЕТ: ${currentBank}`;
+		document.getElementById('bank-0').innerText = `РЕЗЕРВ: ${currentBank}`;
+		document.getElementById('bank-1').innerText = `РЕЗЕРВ: ${currentBank}`;
 		document.getElementById('rb1').classList.toggle('active', currentRound === 1);
 		document.getElementById('rb2').classList.toggle('active', currentRound === 2);
 	}
