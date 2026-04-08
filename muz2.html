@@ -323,7 +323,7 @@
 			mBox.innerHTML = `<img src="${url}">`;
 		} else if ((type === 'video' || type === 'audio' || type === 'silent_video') && playerReady) {
 			wrapper.style.display = 'block';
-			//if (!isAns) repeatBtn.style.display = 'block';
+			if (!isAns) repeatBtn.style.display = 'block';
 			//if (type === 'audio' && !isAns) placeholder.style.display = 'flex';
 			if (type === 'audio') wrapper.style.display = 'none';
 
@@ -336,7 +336,7 @@
 				player.mute();
 			} else {
 				player.unMute();
-				player.setVolume(80); // Устанавливаем громкость на 80% для видео и аудио
+				player.setVolume(100); // Устанавливаем громкость на 100% для видео и аудио
 			}
 
 			player.loadVideoById({ videoId: vId, startSeconds: sSec, endSeconds: eSec });
