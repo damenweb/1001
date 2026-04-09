@@ -443,7 +443,7 @@
     
 	let revealTimeouts = []; // Массив для таймеров открытия карт
 	
-	const timerValMain = 12;
+	const timerValMain = 15;
     let timerVal = timerValMain;
     let turnCounter = 0; 
     let timerInterval = null;
@@ -579,7 +579,7 @@
             
             isTransitioning = false; 
             updateUI(); 
-        }, 10000); 
+        }, 4000); 
     }
 
 	function revealAllCards() {
