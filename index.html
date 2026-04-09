@@ -562,7 +562,7 @@
                 sequencePointer = (sequencePointer + 1) % roundSequence.length;
                 let next = roundSequence[sequencePointer];
                 const teamStrikes = document.querySelectorAll(`#strikes-${next.team} .active`).length;
-                if (teamStrikes < 3) {
+                if (teamStrikes < 4) {
                     foundNext = true;
                     syncIndicesToSequence();
                     turnCounter++; 
