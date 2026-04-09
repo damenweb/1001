@@ -604,41 +604,49 @@
 	}
 
 	function openCard(index) {
-        if (isTransitioning) return;
-        
-        const cards = document.querySelectorAll('.answer-card');
-        const currentAnswers = gameData[currentIdx]?.answers;
-        
-        if (!cards[index] || cards[index].classList.contains('flipped')) return;
+        if (isTransitioning) return;
+                
+        const cards = document.querySelectorAll('.answer-card');
+        const currentAnswers = gameData[currentIdx]?.answers;
+                
+        if (!cards[index] || cards[index].classList.contains('flipped')) return;
 
-        const points = parseInt(currentAnswers[index].points) || 0;
-        playAudio(points < 0 ? 'fail' : 'flip');
-        cards[index].classList.add('flipped');
+        const points = parseInt(currentAnswers[index].points) || 0;
+        playAudio(points < 0 ? 'fail' : 'flip');
+        cards[index].classList.add('flipped');
 
-        // ПРОВЕРКА: Все ли разгадано?
-        const flippedCount = document.querySelectorAll('.answer-card.flipped').length;
-        if (flippedCount === cards.length) {
-            clearInterval(timerInterval);
-            clearTimeout(turnTimeout);
-            activeTeam = -1;
-            document.getElementById('timer').classList.add('invisible');
-            isTransitioning = false;
-            updateUI();
+        // --- ИСПРАВЛЕНИЕ: СНАЧАЛА НАЧИСЛЯЕМ ОЧКИ ---
+        if (activeTeam !== -1) {
+            const scoreEl = document.getElementById(`score-${activeTeam}`);
+            scoreEl.value = parseInt(scoreEl.value) + points;
+        }
+        // ------------------------------------------
+
+        // --- ТЕПЕРЬ ПРОВЕРКА КОНЦА РАУНДА НЕ МЕШАЕТ ОЧКАМ ---
+        // ПРОВЕРКА: Все ли разгадано?
+        const flippedCount = document.querySelectorAll('.answer-card.flipped').length;
+        if (flippedCount === cards.length) {
+            clearInterval(timerInterval);
+            clearTimeout(turnTimeout);
+            activeTeam = -1;
+            document.getElementById('timer').classList.add('invisible');
+            isTransitioning = false;
+            updateUI();
 			if (currentIdx === gameData.length - 1) {
 				setTimeout(() => runGrandFinale(), 3000);
 			} else {
 				setTimeout(() => playAudio('clap'), 3000);
 			}
-            return;
-        }
+            return;
+        }
+        // ----------------------------------------------------
 
-        if (activeTeam !== -1) {
-            isTransitioning = true; 
-            const scoreEl = document.getElementById(`score-${activeTeam}`);
-            scoreEl.value = parseInt(scoreEl.value) + points;
-            switchTurn();
-        }
-    }
+        // Если раунд не закончен, блокируем действия и ждем переключения хода
+        if (activeTeam !== -1) {
+            isTransitioning = true; 
+            switchTurn(); // Логика начисления очков отсюда убрана, она теперь выше
+        }
+    }
 
     function addStrike() {
         if (isTransitioning || activeTeam === -1) return;
