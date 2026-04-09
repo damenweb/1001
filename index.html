@@ -667,7 +667,7 @@
 
     function startNewTurnTimer() {
         clearInterval(timerInterval);
-        timerVal = timerValMain + (turnCounter * 1); 
+        timerVal = timerValMain + (turnCounter * 2); 
         const timerEl = document.getElementById('timer');
         timerEl.innerText = timerVal;
         timerEl.classList.remove('warning', 'time-up');
